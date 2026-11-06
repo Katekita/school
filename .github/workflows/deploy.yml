@@ -31,6 +31,12 @@ jobs:
         run: npm run build
         env:
           GITHUB_PAGES: 'true'
+      # SPA fallback: Pages serves 404.html for unknown paths, so the router boots
+      # on deep links like /school/news or /school/students/schedule.
+      - name: Add SPA fallback
+        run: |
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload site artifact
