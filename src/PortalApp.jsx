@@ -80,7 +80,7 @@ function PageLoader() {
 export default function PortalApp() {
   return (
     <LanguageProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'}>
         <ScrollToTop />
         <SeoTitle />
         <Routes>
