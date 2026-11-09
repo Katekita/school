@@ -4,6 +4,7 @@ import { LanguageProvider, useLanguage } from './i18n/LanguageContext'
 import PortalLayout from './layouts/PortalLayout'
 import HomePage from './pages/home/HomePage'
 import './styles/portal.css'
+import './styles/features.css'
 
 // Лениво грузим остальные страницы — уменьшает стартовый бандл.
 const AboutPage = lazy(() => import('./pages/about/AboutPage'))
@@ -27,45 +28,107 @@ const FaqPage = lazy(() => import('./pages/faq/FaqPage'))
 const AdminPage = lazy(() => import('./pages/admin/AdminPage'))
 const NotFoundPage = lazy(() => import('./pages/not-found/NotFoundPage'))
 
-function ScrollToTop() {
+// Заголовок и описание раздела: title и description меняются вместе с маршрутом.
+const pageKeys = {
+  '/': { title: 'common.schoolName', desc: 'meta.home' },
+  '/mektep': { title: 'about.title', desc: 'meta.about' },
+  '/about/history': { title: 'history.title', desc: 'meta.history' },
+  '/about/alykul-osmonov': { title: 'alykul.title', desc: 'meta.alykul' },
+  '/jetekchilik': { title: 'leadership.title', desc: 'meta.leadership' },
+  '/mugalimder': { title: 'teachers.title', desc: 'meta.teachers' },
+  '/kabyl-aluu': { title: 'admissions.title', desc: 'meta.admissions' },
+  '/admission': { title: 'admission.title', desc: 'meta.admissions' },
+  '/parents': { title: 'parents.title', desc: 'meta.parents' },
+  '/students': { title: 'students.title', desc: 'meta.students' },
+  '/students/schedule': { title: 'schedule.title', desc: 'meta.schedule' },
+  '/dariek': { title: 'location.title', desc: 'meta.location' },
+  '/baylanysh': { title: 'contact.title', desc: 'meta.contact' },
+  '/news': { title: 'news.title', desc: 'meta.news' },
+  '/events': { title: 'events.title', desc: 'meta.events' },
+  '/documents': { title: 'documents.title', desc: 'meta.documents' },
+  '/search': { title: 'search.title', desc: 'meta.search' },
+  '/faq': { title: 'faq.title', desc: 'meta.faq' },
+  '/admin': { title: 'admin.title', desc: 'meta.admin' },
+}
+
+function setMeta(attr, name, content) {
+  if (!content) return
+  let tag = document.head.querySelector(`meta[${attr}="${name}"]`)
+  if (!tag) {
+    tag = document.createElement('meta')
+    tag.setAttribute(attr, name)
+    document.head.appendChild(tag)
+  }
+  tag.setAttribute('content', content)
+}
+
+function Seo() {
+  const { t, lang } = useLanguage()
   const { pathname } = useLocation()
+
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [pathname])
+    const page = pageKeys[pathname]
+    const suffix = t('common.schoolName')
+    const title = page && pathname !== '/' ? `${t(page.title)} — ${suffix}` : suffix
+    document.title = title
+    document.documentElement.lang = lang
+
+    const desc = page ? t(page.desc) : t('meta.default')
+    setMeta('name', 'description', desc)
+    setMeta('property', 'og:title', title)
+    setMeta('property', 'og:description', desc)
+    setMeta('property', 'og:url', window.location.href)
+
+    // Canonical с учётом базы GitHub Pages.
+    let link = document.head.querySelector('link[rel="canonical"]')
+    if (!link) {
+      link = document.createElement('link')
+      link.rel = 'canonical'
+      document.head.appendChild(link)
+    }
+    link.href = window.location.href.split('#')[0]
+  }, [pathname, lang, t])
+
   return null
 }
 
-// Динамический SEO-title под текущий язык и маршрут.
-function SeoTitle() {
-  const { t, lang } = useLanguage()
-  const { pathname } = useLocation()
+// Прокрутка: вверх на новой странице, к якорю — если элемент с таким id есть.
+// Якорь может быть числовым (/faq#3), а '#3' — недопустимый CSS-селектор,
+// поэтому сначала пробуем getElementById, затем querySelector.
+// Страницы монтируются с задержкой (Suspense + AnimatePresence), поэтому
+// якорь ищем несколько раз подряд, а не один.
+function findHashTarget(hash) {
+  const id = decodeURIComponent(hash.slice(1))
+  if (!id) return null
+  const byId = document.getElementById(id)
+  if (byId) return byId
+  try {
+    return document.querySelector(hash)
+  } catch {
+    return null
+  }
+}
+
+function ScrollManager() {
+  const { pathname, hash } = useLocation()
+
   useEffect(() => {
-    const map = {
-      '/': 'home.title',
-      '/mektep': 'about.title',
-      '/about/history': 'history.title',
-      '/about/alykul-osmonov': 'alykul.title',
-      '/jetekchilik': 'leadership.title',
-      '/mugalimder': 'teachers.title',
-      '/kabyl-aluu': 'admissions.title',
-      '/admission': 'admission.title',
-      '/parents': 'parents.title',
-      '/students': 'students.title',
-      '/students/schedule': 'schedule.title',
-      '/dariek': 'location.title',
-      '/baylanysh': 'contact.title',
-      '/news': 'news.title',
-      '/events': 'events.title',
-      '/documents': 'documents.title',
-      '/search': 'search.title',
-      '/faq': 'faq.title',
-      '/admin': 'admin.title',
+    window.scrollTo(0, 0)
+    if (!hash) return
+    let timer = 0
+    let tries = 0
+    const look = () => {
+      const target = findHashTarget(hash)
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
+      if (++tries < 20) timer = setTimeout(look, 60)
     }
-    const key = map[pathname]
-    const suffix = t('common.schoolName')
-    document.title = key ? `${t(key)} — ${suffix}` : suffix
-    document.documentElement.lang = lang
-  }, [pathname, lang, t])
+    timer = setTimeout(look, 60)
+    return () => clearTimeout(timer)
+  }, [pathname, hash])
+
   return null
 }
 
@@ -81,8 +144,8 @@ export default function PortalApp() {
   return (
     <LanguageProvider>
       <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'}>
-        <ScrollToTop />
-        <SeoTitle />
+        <ScrollManager />
+        <Seo />
         <Routes>
           <Route element={<PortalLayout />}>
             <Route path="/" element={<HomePage />} />

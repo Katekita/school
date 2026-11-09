@@ -1,0 +1,361 @@
+
+/* ============================================================
+   Живой виджет расписания на главной
+   ============================================================ */
+.live-section {
+  padding-top: 64px;
+  padding-bottom: 64px;
+}
+.live-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.85fr);
+  gap: 28px;
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 150% at 0% 0%, rgba(30, 136, 229, 0.1) 0%, transparent 55%),
+    var(--surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.live-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--blue-600), var(--blue-400), transparent);
+  opacity: 0.9;
+}
+.live-card.is-lesson::after {
+  background: linear-gradient(90deg, #16a34a, #4ade80, transparent);
+}
+.live-card.is-break::after {
+  background: linear-gradient(90deg, #d97706, #fbbf24, transparent);
+}
+.live-card-head {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+.live-card-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--blue-50);
+  color: var(--blue-700);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.live-card-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--blue-500);
+}
+.live-card-dot.is-pulsing {
+  background: #16a34a;
+  animation: pulse-dot 2s ease-out infinite;
+}
+.live-card-head h2 {
+  font-size: clamp(24px, 2.6vw, 34px);
+}
+.live-card-head > p {
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.live-card-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.live-card-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--blue-700);
+  color: #fff;
+}
+.live-card-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.live-card-info > strong {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.live-card-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.live-card-meta svg {
+  color: var(--blue-500);
+  margin-right: 3px;
+}
+.live-card-countdown {
+  color: var(--blue-700);
+  font-size: 13px;
+  font-weight: 600;
+}
+.live-card-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--blue-100);
+}
+.live-card-progress > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue-600), var(--blue-400));
+  transform-origin: left center;
+  transition: transform 0.6s ease;
+}
+.live-card-next {
+  display: grid;
+  gap: 3px;
+  padding: 18px 20px;
+  border: 1px dashed var(--line);
+  border-radius: 18px;
+  background: var(--surface-inset);
+}
+.live-card-next > span {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.live-card-next > strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+.live-card-next > small {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.live-card-link {
+  grid-column: 1 / -1;
+}
+
+/* Компактная полоса статуса (вариант bar) */
+.live-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.live-bar-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  animation: pulse-dot 2s ease-out infinite;
+}
+.live-bar.is-break .live-bar-dot {
+  background: #d97706;
+}
+.live-bar.is-done .live-bar-dot,
+.live-bar.is-weekend .live-bar-dot,
+.live-bar.is-empty .live-bar-dot {
+  background: var(--muted);
+  animation: none;
+}
+
+/* ============================================================
+   Счётчики «школа в числах»
+   ============================================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.stat-card {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: 8px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+.stat-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--blue-300);
+  box-shadow: var(--shadow-lg);
+}
+.stat-card strong {
+  font-size: clamp(30px, 3.4vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--blue-800);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.stat-card > span:last-child {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.stat-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--blue-50);
+  color: var(--blue-700);
+}
+.stat-card-wide {
+  grid-column: span 1;
+}
+
+/* ============================================================
+   Действия расписания: .ics, печать, поделиться
+   ============================================================ */
+.schedule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-inset);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.action-chip:hover {
+  border-color: var(--blue-300);
+  background: var(--blue-50);
+  color: var(--blue-800);
+  transform: translateY(-1px);
+}
+.action-chip svg {
+  color: var(--blue-600);
+}
+
+/* ============================================================
+   Подсветка идущего урока и сфокусированного дня
+   ============================================================ */
+.lesson-row.is-now {
+  background: linear-gradient(90deg, rgba(22, 163, 74, 0.1), transparent);
+  box-shadow: inset 3px 0 0 #16a34a;
+}
+.lesson-row.is-now .lesson-subject {
+  color: #15803d;
+}
+.lesson-now-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  animation: pulse-dot 2s ease-out infinite;
+}
+.lesson-num {
+  position: relative;
+}
+.day-card.is-focused {
+  border-color: var(--blue-400);
+  box-shadow: 0 0 0 3px var(--blue-100), var(--shadow-md);
+}
+.bell.is-now {
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.08);
+}
+.bell.is-now .bell-time {
+  color: #15803d;
+}
+
+@media (max-width: 900px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .live-card {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 24px;
+  }
+  .live-card-link {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .stat-card {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 14px;
+    padding: 18px;
+  }
+  .stat-card > span:last-child {
+    grid-column: 2;
+  }
+  .live-section {
+    padding-top: 44px;
+    padding-bottom: 44px;
+  }
+  .live-card-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+}

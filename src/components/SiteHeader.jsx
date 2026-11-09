@@ -1,67 +1,191 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { BookOpen, CalendarDays, MapPin, Menu, Search, X } from 'lucide-react'
+import { BookOpen, CalendarDays, Command, MapPin, Menu, X } from 'lucide-react'
 import { useLanguage } from '../i18n/LanguageContext'
 import LanguageSwitcher from './LanguageSwitcher'
+import ThemeSwitcher from './ThemeSwitcher'
+import useNow from '../hooks/useNow'
+import { dayTitle, getLiveStatus, weekdayId } from '../utils/scheduleLive'
+import { readSavedClass } from '../utils/classStorage'
 
-export default function SiteHeader() {
-  const { t } = useLanguage()
+const navLinks = [
+  ['/mektep', 'nav.school'],
+  ['/about/history', 'nav.history'],
+  ['/news', 'nav.news'],
+  ['/events', 'nav.events'],
+  ['/documents', 'nav.documents'],
+  ['/students/schedule', 'nav.schedule'],
+  ['/mugalimder', 'nav.teachers'],
+  ['/faq', 'nav.faq'],
+]
+
+function useScrollHeader() {
+  const [state, setState] = useState({ hidden: false, progress: 0 })
+
+  useEffect(() => {
+    let frame = 0
+    const onScroll = () => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        const doc = document.documentElement
+        const max = doc.scrollHeight - doc.clientHeight
+        const y = window.scrollY
+        setState((prev) => {
+          const progress = max > 0 ? Math.min(1, y / max) : 0
+          const hidden = y > 220 && y > (prev.lastY ?? 0) + 4
+          return { hidden, progress, lastY: y }
+        })
+      })
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      if (frame) cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [])
+
+  return state
+}
+
+export default function SiteHeader({ onOpenPalette }) {
+  const { t, lang } = useLanguage()
   const [menuOpen, setMenuOpen] = useState(false)
+  const { hidden, progress } = useScrollHeader()
+  const now = useNow(30_000)
+  const navRef = useRef(null)
 
-  const links = [
-    [t('nav.school'), '/mektep'],
-    [t('nav.history'), '/about/history'],
-    [t('nav.news'), '/news'],
-    [t('nav.events'), '/events'],
-    [t('nav.documents'), '/documents'],
-    [t('nav.schedule'), '/students/schedule'],
-    [t('nav.teachers'), '/mugalimder'],
-    [t('nav.faq'), '/faq'],
-  ]
+  const links = navLinks.map(([to, key]) => [t(key), to])
+
+  // Мобильное меню: блокируем прокрутку страницы и закрываем по Escape.
+  useEffect(() => {
+    if (!menuOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
+
+  // Ctrl/⌘+K — командная палитра.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        onOpenPalette?.()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onOpenPalette])
+
+  const live = getLiveStatus(readSavedClass(), now)
+  const liveLabel =
+    live.kind === 'lesson'
+      ? `${t('live.now')} · ${live.index + 1}`
+      : live.kind === 'break'
+        ? t('live.break')
+        : `${dayTitle(weekdayId(now), lang)}`
 
   return (
     <>
+      <a className="skip-link" href="#main-content">
+        {t('common.skipToContent')}
+      </a>
+
       <div className="utility-bar">
         <div className="utility-left">
-          <span className="utility-item"><MapPin size={13} /> {t('header.city')}</span>
-          <span className="utility-item"><CalendarDays size={13} /> {t('header.schoolYear')}</span>
+          <span className="utility-item">
+            <MapPin size={13} /> {t('header.city')}
+          </span>
+          <span className="utility-item">
+            <CalendarDays size={13} /> {t('header.schoolYear')}
+          </span>
         </div>
         <div className="utility-right">
+          <span className={`utility-live is-${live.kind}`}>
+            <span className="utility-dot" aria-hidden="true" />
+            {liveLabel}
+          </span>
           <NavLink to="/dariek">{t('header.map')}</NavLink>
           <NavLink to="/baylanysh">{t('header.leaveRequest')}</NavLink>
         </div>
       </div>
-      <header className="site-header">
+
+      <header className={`site-header${hidden ? ' is-hidden' : ''}`}>
         <div className="header-inner">
           <NavLink className="brand" to="/" aria-label={t('header.homeAria')}>
-            <span className="brand-mark"><BookOpen size={23} /></span>
+            <span className="brand-mark">
+              <BookOpen size={23} />
+            </span>
             <span className="brand-copy">
-              <strong>{t('common.schoolName')}</strong>
+              <strong className="brand-name-full">{t('common.schoolName')}</strong>
+              <strong className="brand-name-short">{t('common.schoolNameShort')}</strong>
               <small>{t('common.portalSubtitle')}</small>
             </span>
           </NavLink>
-          <nav className={`main-nav${menuOpen ? ' is-open' : ''}`} aria-label="main">
+
+          <nav
+            ref={navRef}
+            id="main-nav"
+            className={`main-nav${menuOpen ? ' is-open' : ''}`}
+            aria-label="main"
+          >
             {links.map(([label, to]) => (
-              <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}>{label}</NavLink>
+              <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}>
+                {label}
+              </NavLink>
             ))}
           </nav>
+
           <div className="header-right">
-            <NavLink className="header-action" to="/search?q=" onClick={() => setMenuOpen(false)}>
-              <Search size={16} /> <span className="header-action-text">{t('common.search')}</span>
-            </NavLink>
+            <button
+              type="button"
+              className="palette-trigger"
+              onClick={onOpenPalette}
+              title={t('palette.open')}
+            >
+              <Command size={15} />
+              <span className="palette-key">Ctrl K</span>
+            </button>
+            <ThemeSwitcher />
             <LanguageSwitcher />
             <button
               className="menu-toggle"
               type="button"
               aria-label={menuOpen ? t('header.closeMenu') : t('header.openMenu')}
               aria-expanded={menuOpen}
+              aria-controls="main-nav"
               onClick={() => setMenuOpen((v) => !v)}
             >
               {menuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
         </div>
+
+        <span
+          className="scroll-progress"
+          style={{ transform: `scaleX(${progress})` }}
+          aria-hidden="true"
+        />
       </header>
+
+      {menuOpen && (
+        <button
+          type="button"
+          className="nav-backdrop"
+          aria-label={t('header.closeMenu')}
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
     </>
   )
 }

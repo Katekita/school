@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CircleHelp, ExternalLink, MapPin, Navigation, Search } from 'lucide-react'
 import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import Reveal from './Reveal'
 import { useLanguage } from '../i18n/LanguageContext'
 
@@ -25,14 +26,15 @@ export default function SchoolMap() {
   const { t } = useLanguage()
   const [query, setQuery] = useState('')
   const [position, setPosition] = useState(bishkekCenter)
-  const [message, setMessage] = useState(t('map.defaultMsg'))
+  // Сообщение держим только как результат поиска: базовый текст берётся из
+  // перевода при каждом рендере, иначе он «застывает» на старом языке.
+  const [result, setResult] = useState(null)
   const [searching, setSearching] = useState(false)
 
   async function searchAddress(event) {
     event.preventDefault()
     if (!query.trim()) return
     setSearching(true)
-    setMessage(t('map.searching'))
     try {
       const params = new URLSearchParams({
         q: `${query}, Bishkek, Kyrgyzstan`,
@@ -43,17 +45,27 @@ export default function SchoolMap() {
       if (!response.ok) throw new Error('search failed')
       const results = await response.json()
       if (!results.length) {
-        setMessage(t('map.notFound'))
+        setResult({ kind: 'notFound' })
       } else {
         setPosition([Number(results[0].lat), Number(results[0].lon)])
-        setMessage(`${t('map.found')}: ${results[0].display_name}`)
+        setResult({ kind: 'found', name: results[0].display_name })
       }
     } catch {
-      setMessage(t('map.error'))
+      setResult({ kind: 'error' })
     } finally {
       setSearching(false)
     }
   }
+
+  const message = searching
+    ? t('map.searching')
+    : result?.kind === 'found'
+      ? `${t('map.found')}: ${result.name}`
+      : result?.kind === 'notFound'
+        ? t('map.notFound')
+        : result?.kind === 'error'
+          ? t('map.error')
+          : t('map.defaultMsg')
 
   const twoGisUrl = `https://2gis.kg/bishkek/search/${encodeURIComponent('№68 мектеп А. Осмонов')}`
 

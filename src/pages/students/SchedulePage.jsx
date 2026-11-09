@@ -1,8 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { CalendarDays, Clock, DoorOpen, GraduationCap } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import PageBanner from '../../components/PageBanner'
 import Reveal from '../../components/Reveal'
+import ScheduleActions from '../../components/ScheduleActions'
 import { useLanguage } from '../../i18n/LanguageContext'
+import useNow from '../../hooks/useNow'
+import useSpotlight from '../../hooks/useSpotlight'
+import { readSavedClass, saveClass } from '../../utils/classStorage'
+import { getLiveStatus, weekdayId } from '../../utils/scheduleLive'
 import {
   lessonTimes,
   schedule10,
@@ -12,26 +18,22 @@ import {
   weekDays,
 } from '../../data/schedule'
 
-const CLASS_STORAGE_KEY = 'school68_schedule_class'
-
-const todayId = (() => {
-  const map = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
-  return map[new Date().getDay()] || ''
-})()
-
-function readSavedClass() {
-  try {
-    const saved = localStorage.getItem(CLASS_STORAGE_KEY)
-    if (saved && scheduleClasses.includes(saved)) return saved
-  } catch {
-    /* localStorage может быть недоступен — показываем первый класс */
-  }
-  return scheduleClasses[0]
-}
+const validDays = weekDays.map((d) => d.id)
 
 export default function SchedulePage() {
   const { t, lang } = useLanguage()
-  const [selectedClass, setSelectedClass] = useState(readSavedClass)
+  const [params, setParams] = useSearchParams()
+  const now = useNow(20_000)
+
+  // Класс живёт в URL (?class=10А) — ссылкой можно поделиться, а кнопка «назад»
+  // в браузере работает как переключатель классов.
+  const urlClass = params.get('class')
+  const urlDay = params.get('day')
+  const selectedClass = scheduleClasses.includes(urlClass) ? urlClass : readSavedClass()
+
+  const live = useMemo(() => getLiveStatus(selectedClass, now), [selectedClass, now])
+  const today = weekdayId(now)
+  const highlightDay = validDays.includes(urlDay) ? urlDay : null
 
   const days = useMemo(
     () =>
@@ -43,14 +45,27 @@ export default function SchedulePage() {
     [lang, selectedClass],
   )
 
+  const gridRef = useSpotlight()
+  const activeRef = useRef(null)
+
   function pickClass(className) {
-    setSelectedClass(className)
-    try {
-      localStorage.setItem(CLASS_STORAGE_KEY, className)
-    } catch {
-      /* сохранение выбора не критично */
-    }
+    saveClass(className)
+    const next = new URLSearchParams(params)
+    next.set('class', className)
+    next.delete('day')
+    setParams(next, { replace: true })
   }
+
+  // При ?day=… прокручиваем к нужному дню и подсвечиваем карточку.
+  useEffect(() => {
+    if (!highlightDay) return
+    const node = activeRef.current
+    if (!node) return
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [highlightDay, selectedClass])
+
+  // Если урок идёт — держим карточку «сегодня» в зоне видимости только при входе.
+  const liveIndex = live.kind === 'lesson' ? live.index : -1
 
   return (
     <>
@@ -65,6 +80,7 @@ export default function SchedulePage() {
                 </span>
                 <h2>{t('schedule.weekTitle')}</h2>
                 <p>{t('schedule.weekText')}</p>
+                <ScheduleActions classKey={selectedClass} lang={lang} />
               </div>
               <div className="schedule-intro-badge" aria-hidden="true">
                 <GraduationCap size={22} />
@@ -94,43 +110,58 @@ export default function SchedulePage() {
             {t('schedule.classLabel')}: {selectedClass}
           </p>
 
-          <div className="week-grid">
-            {days.map((day, index) => (
-              <Reveal key={day.id} delay={index * 40}>
-                <article className={`day-card${day.id === todayId ? ' is-today' : ''}`}>
-                  <header className="day-card-head">
-                    <h3>{day.title}</h3>
-                    {day.id === todayId && <span className="day-today">{t('schedule.today')}</span>}
-                  </header>
+          <div className="week-grid" ref={gridRef}>
+            {days.map((day, index) => {
+              const isToday = day.id === today
+              return (
+                <Reveal key={day.id} delay={index * 40}>
+                  <article
+                    ref={day.id === highlightDay || (isToday && !highlightDay) ? activeRef : null}
+                    className={`day-card spotlight${isToday ? ' is-today' : ''}${
+                      day.id === highlightDay ? ' is-focused' : ''
+                    }`}
+                  >
+                    <header className="day-card-head">
+                      <h3>{day.title}</h3>
+                      {isToday && <span className="day-today">{t('schedule.today')}</span>}
+                    </header>
 
-                  {day.lessons.length ? (
-                    <ol className="lesson-list">
-                      {day.lessons.map((item, lessonIndex) => {
-                        const time = lessonTimes[lessonIndex]
-                        return (
-                          <li className="lesson-row" key={`${day.id}-${lessonIndex}`}>
-                            <span className="lesson-num">{lessonIndex + 1}</span>
-                            <div className="lesson-body">
-                              <strong className="lesson-subject">
-                                {subjectName(item.subject, lang)}
-                              </strong>
-                              <span className="lesson-time">
-                                <Clock size={12} /> {time.start}–{time.end}
+                    {day.lessons.length ? (
+                      <ol className="lesson-list">
+                        {day.lessons.map((item, lessonIndex) => {
+                          const time = lessonTimes[lessonIndex]
+                          const isNow = isToday && liveIndex === lessonIndex
+                          return (
+                            <li
+                              className={`lesson-row${isNow ? ' is-now' : ''}`}
+                              key={`${day.id}-${lessonIndex}`}
+                            >
+                              <span className="lesson-num">
+                                {isNow && <span className="lesson-now-dot" aria-hidden="true" />}
+                                {lessonIndex + 1}
                               </span>
-                            </div>
-                            <span className="lesson-room" title={t('schedule.room')}>
-                              <DoorOpen size={12} /> {item.room || '—'}
-                            </span>
-                          </li>
-                        )
-                      })}
-                    </ol>
-                  ) : (
-                    <p className="day-empty">{t('schedule.noLessons')}</p>
-                  )}
-                </article>
-              </Reveal>
-            ))}
+                              <div className="lesson-body">
+                                <strong className="lesson-subject">
+                                  {subjectName(item.subject, lang)}
+                                </strong>
+                                <span className="lesson-time">
+                                  <Clock size={12} /> {time.start}–{time.end}
+                                </span>
+                              </div>
+                              <span className="lesson-room" title={t('schedule.room')}>
+                                <DoorOpen size={12} /> {item.room || '—'}
+                              </span>
+                            </li>
+                          )
+                        })}
+                      </ol>
+                    ) : (
+                      <p className="day-empty">{t('schedule.noLessons')}</p>
+                    )}
+                  </article>
+                </Reveal>
+              )
+            })}
           </div>
 
           <Reveal>
@@ -146,7 +177,10 @@ export default function SchedulePage() {
               </div>
               <div className="bells-list">
                 {lessonTimes.map((time, index) => (
-                  <div className="bell" key={time.start}>
+                  <div
+                    className={`bell${liveIndex === index ? ' is-now' : ''}`}
+                    key={time.start}
+                  >
                     <span className="bell-num">{index + 1}</span>
                     <span className="bell-time">
                       {time.start}–{time.end}

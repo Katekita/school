@@ -1,5 +1,4 @@
-/* Базовый сброс и типографика в стиле Apple (голубой + белый) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Базовый сброс, типографика и дизайн-токены (светлая + тёмная тема). */
 
 :root {
   --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -15,15 +14,37 @@
   --blue-100: #dbeafe;
   --blue-50: #eff6ff;
 
+  /* Семантические слои: меняются вместе с темой */
   --ink: #0b2545;
   --muted: #4b5563;
+  --body: #334155;
   --paper: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f5f8fc;
+  --surface-inset: #f7fafd;
   --bg: #f5f8fc;
   --line: #e3eaf3;
+  --header-bg: rgba(255, 255, 255, 0.72);
+  --chip-bg: rgba(255, 255, 255, 0.6);
+  --shadow-color: 11 37 69;
 
-  --shadow-sm: 0 1px 3px rgba(11, 37, 69, 0.06);
-  --shadow-md: 0 8px 24px rgba(11, 37, 69, 0.08);
-  --shadow-lg: 0 18px 50px rgba(11, 37, 69, 0.12);
+  /* Тёплые акценты (расписание, «сегодня») */
+  --gold-soft: #fff7d6;
+  --gold-line: #ffe58a;
+  --gold-text: #7a5b00;
+  --gold-head-top: #ffe27a;
+  --gold-head-bottom: #ffd43b;
+  --gold-head-ink: #3d3200;
+  --gold-bell: #fff3bf;
+  --gold-bell-ink: #6b5300;
+
+  /* Текстовые акценты: в тёмной теме светлеют, синие стели остаются фоном */
+  --accent-text: var(--blue-700);
+  --accent-deep: var(--blue-900);
+
+  --shadow-sm: 0 1px 3px rgb(var(--shadow-color) / 0.06);
+  --shadow-md: 0 8px 24px rgb(var(--shadow-color) / 0.08);
+  --shadow-lg: 0 18px 50px rgb(var(--shadow-color) / 0.12);
 
   font-family: var(--sans);
   font-synthesis: none;
@@ -34,6 +55,55 @@
   background: var(--bg);
   color-scheme: light;
   line-height: 1.5;
+
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Тёмная тема: те же имена переменных, другие значения. */
+:root[data-theme='dark'] {
+  --blue-900: #06101f;
+  --blue-800: #0a1f38;
+  --blue-700: #1b6ac4;
+  --blue-600: #2172c8;
+  --blue-500: #3f8fdd;
+  --blue-400: #6cb4f2;
+  --blue-300: #a8d1f5;
+  --blue-100: #17334f;
+  --blue-50: #14293f;
+
+  --ink: #eaf2fb;
+  --muted: #9fb4cc;
+  --body: #c3d3e6;
+  --paper: #0b1626;
+  --surface: #101d31;
+  --surface-2: #0b1626;
+  --surface-inset: #16263d;
+  --bg: #070d18;
+  --line: #1e354f;
+  --header-bg: rgba(11, 22, 38, 0.78);
+  --chip-bg: rgba(255, 255, 255, 0.06);
+  --shadow-color: 0 0 0;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.6);
+
+  --gold-soft: #2a2410;
+  --gold-line: #55461c;
+  --gold-text: #f0d37a;
+  --gold-head-top: #3a2f13;
+  --gold-head-bottom: #2c2410;
+  --gold-head-ink: #f5dd94;
+  --gold-bell: #2c2410;
+  --gold-bell-ink: #f0d37a;
+
+  --shadow-sm: 0 1px 3px rgb(var(--shadow-color) / 0.5);
+  --shadow-md: 0 8px 24px rgb(var(--shadow-color) / 0.55);
+  --shadow-lg: 0 18px 50px rgb(var(--shadow-color) / 0.6);
+
+  --accent-text: var(--blue-400);
+  --accent-deep: var(--blue-300);
+
+  color-scheme: dark;
 }
 
 * {
@@ -96,6 +166,25 @@ img {
 ::selection {
   color: #fff;
   background: var(--blue-600);
+}
+
+/* Skip-link для навигации с клавиатуры */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: var(--blue-700);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  transform: translateY(-160%);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 /* Плавная анимация появления (используется компонентом Reveal) */

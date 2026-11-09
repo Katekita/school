@@ -3,13 +3,76 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#103e35" />
-    <meta name="description" content="№68 А. Осмонов атындагы мектептин расмий маалымат порталы" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons.svg" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d3a6b" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#070d18" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="№68 А. Осмонов атындагы мектептин маалымат порталы: расписание, жаңылыктар, документтер, дарек жана байланыш."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="№68 А. Осмонов атындагы мектеп" />
+    <meta property="og:title" content="№68 А. Осмонов атындагы мектеп" />
+    <meta
+      property="og:description"
+      content="Мектептин расписаниеси, жаңылыктары, документтери жана байланыш маалыматы."
+    />
+    <meta
+      property="og:image"
+      content="https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <title>№68 А. Осмонов атындагы мектеп</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "School",
+        "name": "№68 А. Осмонов атындагы жалпы билим берүү мектеби",
+        "alternateName": "Школа №68 им. А. Осмонова",
+        "url": "https://katekita.github.io/school/",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "ул. Токтогула, 220",
+          "addressLocality": "Бишкек",
+          "addressCountry": "KG"
+        },
+        "telephone": "+996 312 45 46 15",
+        "sameAs": ["https://www.instagram.com/68.school_/"]
+      }
+    </script>
+
+    <script>
+      // Тема применяется до первой отрисовки — так не будет вспышки светлого фона.
+      (function () {
+        try {
+          var saved = localStorage.getItem('school68_theme') || 'auto'
+          var dark =
+            saved === 'dark' ||
+            (saved === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light'
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      Бул порталды көрүү үчүн JavaScript керек. / Для работы портала нужен включённый JavaScript.
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

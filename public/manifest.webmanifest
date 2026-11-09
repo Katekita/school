@@ -1,0 +1,26 @@
+{
+  "name": "№68 А. Осмонов атындагы мектеп",
+  "short_name": "Мектеп №68",
+  "description": "Мектептин расписаниеси, жаңылыктары, документтери жана байланыш маалыматы.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f5f8fc",
+  "theme_color": "#0d3a6b",
+  "lang": "ky",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
