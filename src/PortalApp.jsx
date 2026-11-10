@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { LanguageProvider, useLanguage } from './i18n/LanguageContext'
 import PortalLayout from './layouts/PortalLayout'
 import HomePage from './pages/home/HomePage'
@@ -26,7 +26,6 @@ const LocationPage = lazy(() => import('./pages/location/LocationPage'))
 const ContactPage = lazy(() => import('./pages/contact/ContactPage'))
 const NewsPage = lazy(() => import('./pages/news/NewsPage'))
 const NewsDetailPage = lazy(() => import('./pages/news/NewsDetailPage'))
-const EventsPage = lazy(() => import('./pages/events/EventsPage'))
 const DocumentsPage = lazy(() => import('./pages/documents/DocumentsPage'))
 const SchedulePage = lazy(() => import('./pages/students/SchedulePage'))
 const SearchPage = lazy(() => import('./pages/search/SearchPage'))
@@ -51,7 +50,6 @@ const pageKeys = {
   '/dariek': { title: 'location.title', desc: 'meta.location' },
   '/baylanysh': { title: 'contact.title', desc: 'meta.contact' },
   '/news': { title: 'news.title', desc: 'meta.news' },
-  '/events': { title: 'events.title', desc: 'meta.events' },
   '/documents': { title: 'documents.title', desc: 'meta.documents' },
   '/search': { title: 'search.title', desc: 'meta.search' },
   '/faq': { title: 'faq.title', desc: 'meta.faq' },
@@ -184,7 +182,7 @@ export default function PortalApp() {
                     <Route path="/baylanysh" element={<ContactPage />} />
                     <Route path="/news" element={<NewsPage />} />
                     <Route path="/news/:slug" element={<NewsDetailPage />} />
-                    <Route path="/events" element={<EventsPage />} />
+                    <Route path="/events" element={<Navigate to="/news#events" replace />} />
                     <Route path="/documents" element={<DocumentsPage />} />
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/faq" element={<FaqPage />} />

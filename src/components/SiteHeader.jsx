@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { BookOpen, CalendarDays, Command, LogIn, MapPin, Menu, UserRound, X } from 'lucide-react'
 import { useLanguage } from '../i18n/LanguageContext'
@@ -11,54 +11,18 @@ import { useAuth } from '../auth/AuthContext'
 
 const navLinks = [
   ['/mektep', 'nav.school'],
-  ['/about/history', 'nav.history'],
   ['/news', 'nav.news'],
-  ['/events', 'nav.events'],
   ['/documents', 'nav.documents'],
   ['/students/schedule', 'nav.schedule'],
   ['/mugalimder', 'nav.teachers'],
   ['/faq', 'nav.faq'],
 ]
 
-function useScrollHeader() {
-  const [state, setState] = useState({ hidden: false, progress: 0 })
-
-  useEffect(() => {
-    let frame = 0
-    const onScroll = () => {
-      if (frame) return
-      frame = requestAnimationFrame(() => {
-        frame = 0
-        const doc = document.documentElement
-        const max = doc.scrollHeight - doc.clientHeight
-        const y = window.scrollY
-        setState((prev) => {
-          const progress = max > 0 ? Math.min(1, y / max) : 0
-          const hidden = y > 220 && y > (prev.lastY ?? 0) + 4
-          return { hidden, progress, lastY: y }
-        })
-      })
-    }
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll)
-    return () => {
-      if (frame) cancelAnimationFrame(frame)
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
-    }
-  }, [])
-
-  return state
-}
-
 export default function SiteHeader({ onOpenPalette }) {
   const { t, lang } = useLanguage()
   const { session } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
-  const { hidden, progress } = useScrollHeader()
   const now = useNow(30_000)
-  const navRef = useRef(null)
 
   const links = navLinks.map(([to, key]) => [t(key), to])
 
@@ -122,7 +86,7 @@ export default function SiteHeader({ onOpenPalette }) {
         </div>
       </div>
 
-      <header className={`site-header${hidden ? ' is-hidden' : ''}`}>
+      <header className="site-header">
         <div className="header-inner">
           <NavLink className="brand" to="/" aria-label={t('header.homeAria')}>
             <span className="brand-mark">
@@ -136,16 +100,19 @@ export default function SiteHeader({ onOpenPalette }) {
           </NavLink>
 
           <nav
-            ref={navRef}
             id="main-nav"
             className={`main-nav${menuOpen ? ' is-open' : ''}`}
-            aria-label="main"
+            aria-label={t('header.mainNavigation')}
           >
             {links.map(([label, to]) => (
               <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}>
                 {label}
               </NavLink>
             ))}
+            <div className="nav-preferences">
+              <ThemeSwitcher />
+              <LanguageSwitcher />
+            </div>
           </nav>
 
           <div className="header-right">
@@ -162,8 +129,6 @@ export default function SiteHeader({ onOpenPalette }) {
               <Command size={15} />
               <span className="palette-key">Ctrl K</span>
             </button>
-            <ThemeSwitcher />
-            <LanguageSwitcher />
             <button
               className="menu-toggle"
               type="button"
@@ -177,11 +142,6 @@ export default function SiteHeader({ onOpenPalette }) {
           </div>
         </div>
 
-        <span
-          className="scroll-progress"
-          style={{ transform: `scaleX(${progress})` }}
-          aria-hidden="true"
-        />
       </header>
 
       {menuOpen && (

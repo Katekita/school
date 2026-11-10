@@ -5,7 +5,7 @@ import Reveal from '../../components/Reveal'
 import { useLanguage } from '../../i18n/LanguageContext'
 
 const icons = [CalendarHeart, BookOpenText, UsersRound, Trophy]
-const routes = ['/students/schedule', '/news', '/events', '/mektep']
+const routes = ['/students/schedule', '/news', '/news#events', '/mektep']
 
 export default function StudentsPage() {
   const { t, get } = useLanguage()

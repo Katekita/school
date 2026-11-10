@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Search, SearchX } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import PageBanner from '../../components/PageBanner'
 import { documents, events, newsItems } from '../../data/mockData'
 import { useLanguage } from '../../i18n/LanguageContext'
@@ -8,8 +8,8 @@ import schoolData from '../../data/school'
 
 export default function SearchPage() {
   const { t } = useLanguage()
-  const navigate = useNavigate()
-  const [query, setQuery] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [query, setQuery] = useState(() => searchParams.get('q') || '')
 
   const allResults = [
     ...newsItems.map((item) => ({ ...item, type: t('search.typeNews') })),
@@ -29,7 +29,7 @@ export default function SearchPage() {
     e.preventDefault()
     const q = query.trim()
     if (!q) return
-    navigate(`/search?q=${encodeURIComponent(q)}`)
+    setSearchParams({ q })
   }
 
   return (
@@ -71,7 +71,15 @@ export default function SearchPage() {
                 <Link
                   className="search-result"
                   key={`${item.type}-${item.id || item.slug}`}
-                  to={item.slug ? `/news/${item.slug}` : '/news'}
+                  to={
+                    item.slug
+                      ? `/news/${item.slug}`
+                      : item.type === t('search.typeEvents')
+                        ? '/news#events'
+                        : item.type === t('search.typeDocuments')
+                          ? '/documents'
+                          : '/news'
+                  }
                 >
                   <span className="meta-chip">{item.type}</span>
                   <strong>{item.title}</strong>

@@ -46,6 +46,8 @@ export default function HomePage() {
           className="hero-image"
           style={reduce ? undefined : { y: imageY }}
           src="https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=2000&q=85"
+          srcSet="https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=640&q=75 640w, https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1280&q=80 1280w, https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=2000&q=85 2000w"
+          sizes="(max-width: 600px) 100vw, (max-width: 1080px) 50vw, 55vw"
           alt={t('home.dir.school.title')}
           fetchPriority="high"
           decoding="async"

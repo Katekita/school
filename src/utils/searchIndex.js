@@ -15,7 +15,6 @@ const sections = [
   { to: '/students', group: 'nav', key: 'nav.students', icon: 'Backpack' },
   { to: '/students/schedule', group: 'nav', key: 'nav.schedule', icon: 'CalendarDays' },
   { to: '/news', group: 'nav', key: 'nav.news', icon: 'Newspaper' },
-  { to: '/events', group: 'nav', key: 'nav.events', icon: 'CalendarHeart' },
   { to: '/documents', group: 'nav', key: 'nav.documents', icon: 'FileText' },
   { to: '/dariek', group: 'nav', key: 'nav.location', icon: 'MapPin' },
   { to: '/baylanysh', group: 'nav', key: 'nav.contact', icon: 'Phone' },

@@ -53,6 +53,7 @@ export const translations = {
       openMenu: 'Менюну ачуу',
       closeMenu: 'Менюну жабуу',
       homeAria: 'Башкы бет',
+      mainNavigation: 'Негизги меню',
     },
     footer: {
       aboutTitle: 'Бөлүмдөр',
@@ -305,8 +306,9 @@ export const translations = {
       openSocial: 'Instagram барагын ачуу',
     },
     news: {
-      title: 'Мектеп жаңылыктары',
+      title: 'Жаңылыктар жана окуялар',
       eyebrow: 'Мектеп турмушу',
+      sectionTitle: 'Жаңылыктар жана жарыялар',
       emptyTitle: 'Расмий жарыялар азырынча кошула элек',
       emptyText: 'Жаңылыктар мектеп администрациясы тарабынан жарыяланып ырасталгандан кийин чыгат.',
       socialLink: 'Мектептин барагы',
@@ -486,6 +488,7 @@ export const translations = {
       openMenu: 'Открыть меню',
       closeMenu: 'Закрыть меню',
       homeAria: 'Главная страница',
+      mainNavigation: 'Основное меню',
     },
     footer: {
       aboutTitle: 'Разделы',
@@ -738,8 +741,9 @@ export const translations = {
       openSocial: 'Открыть страницу Instagram',
     },
     news: {
-      title: 'Новости школы',
+      title: 'Новости и события',
       eyebrow: 'Жизнь школы',
+      sectionTitle: 'Новости и объявления',
       emptyTitle: 'Официальные публикации пока не добавлены',
       emptyText: 'Новости появятся после публикации и подтверждения администрацией школы.',
       socialLink: 'Страница школы',
@@ -919,6 +923,7 @@ export const translations = {
       openMenu: 'Open menu',
       closeMenu: 'Close menu',
       homeAria: 'Home page',
+      mainNavigation: 'Main navigation',
     },
     footer: {
       aboutTitle: 'Sections',
@@ -1170,8 +1175,9 @@ export const translations = {
       openSocial: 'Open the Instagram page',
     },
     news: {
-      title: 'School news',
+      title: 'News and events',
       eyebrow: 'School life',
+      sectionTitle: 'News and announcements',
       emptyTitle: 'Official publications are not added yet',
       emptyText: 'News will appear after publication and confirmation by the school administration.',
       socialLink: 'School page',
