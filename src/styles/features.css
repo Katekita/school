@@ -2,6 +2,40 @@
 /* ============================================================
    Живой виджет расписания на главной
    ============================================================ */
+.auth-card {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: clamp(22px, 5vw, 36px);
+  color: var(--body);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow-md);
+}
+.auth-card label { display: grid; gap: 7px; font-weight: 650; }
+.auth-card input { width: 100%; min-height: 46px; padding: 10px 13px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; font: inherit; }
+.auth-card input:focus-visible { outline: 3px solid var(--blue-400); outline-offset: 2px; }
+.auth-card .button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 16px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; text-decoration: none; font: inherit; font-weight: 700; cursor: pointer; }
+.auth-card .button-primary { color: white; background: var(--blue-700); border-color: var(--blue-700); }
+.auth-card .button:disabled { opacity: .65; cursor: wait; }
+.auth-error { color: #b42318; }
+.account-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; text-decoration: none; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.account-link:hover { background: var(--surface-2); }
+.admin-panel h2 { margin: 28px 0 14px; color: var(--ink); }
+.admin-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); align-items: end; gap: 12px; }
+.admin-form label, .csv-upload { display: grid; gap: 6px; color: var(--body); font-weight: 650; }
+.admin-form input, .admin-form select, .admin-actions select { min-height: 42px; padding: 8px 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; font: inherit; }
+.admin-form button, .admin-actions button { min-height: 42px; padding: 8px 12px; color: white; background: var(--blue-700); border: 0; border-radius: 9px; font: inherit; font-weight: 700; cursor: pointer; }
+.csv-upload { margin: 18px 0; }
+.issued-passwords { margin: 18px 0; padding: 16px; overflow-wrap: anywhere; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; }
+.admin-users { display: grid; gap: 9px; }
+.admin-users article { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.admin-users article span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
+.admin-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 600px) { .admin-users article { align-items: stretch; flex-direction: column; } .admin-actions > * { flex: 1; } }
+
 .live-section {
   padding-top: 64px;
   padding-bottom: 64px;

@@ -5,6 +5,13 @@ import PortalLayout from './layouts/PortalLayout'
 import HomePage from './pages/home/HomePage'
 import './styles/portal.css'
 import './styles/features.css'
+import { AuthProvider } from './auth/AuthContext'
+import RequireAuth from './auth/RequireAuth'
+import LoginPage from './pages/auth/LoginPage'
+import AccountPage from './pages/auth/AccountPage'
+import ChangePasswordPage from './pages/auth/ChangePasswordPage'
+import { Link } from 'react-router-dom'
+import PageBanner from './components/PageBanner'
 
 // Лениво грузим остальные страницы — уменьшает стартовый бандл.
 const AboutPage = lazy(() => import('./pages/about/AboutPage'))
@@ -140,15 +147,24 @@ function PageLoader() {
   )
 }
 
+function TeacherMaterialsPage() {
+  return <><PageBanner title="Материалы для учителей" eyebrow="ЗАКРЫТЫЙ РАЗДЕЛ"/><section className="content-section"><div className="page-container"><div className="empty-state"><p>Раздел подключён к закрытому хранилищу Supabase. Материалы появятся после настройки проекта и загрузки администрацией.</p><Link to="/account">Вернуться в кабинет</Link></div></div></section></>
+}
+
 export default function PortalApp() {
   return (
     <LanguageProvider>
+      <AuthProvider>
       <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'}>
         <ScrollManager />
         <Seo />
         <Routes>
           <Route element={<PortalLayout />}>
             <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/change-password" element={<RequireAuth><ChangePasswordPage /></RequireAuth>} />
+            <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
+            <Route path="/teacher-materials" element={<RequireAuth roles={['teacher','admin']}><TeacherMaterialsPage /></RequireAuth>} />
             <Route
               path="*"
               element={
@@ -162,8 +178,8 @@ export default function PortalApp() {
                     <Route path="/kabyl-aluu" element={<AdmissionsPage />} />
                     <Route path="/admission" element={<AdmissionPage />} />
                     <Route path="/parents" element={<ParentsPage />} />
-                    <Route path="/students" element={<StudentsPage />} />
-                    <Route path="/students/schedule" element={<SchedulePage />} />
+                    <Route path="/students" element={<RequireAuth roles={['student','teacher','admin']}><StudentsPage /></RequireAuth>} />
+                    <Route path="/students/schedule" element={<RequireAuth roles={['student','teacher','admin']}><SchedulePage /></RequireAuth>} />
                     <Route path="/dariek" element={<LocationPage />} />
                     <Route path="/baylanysh" element={<ContactPage />} />
                     <Route path="/news" element={<NewsPage />} />
@@ -172,7 +188,7 @@ export default function PortalApp() {
                     <Route path="/documents" element={<DocumentsPage />} />
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/faq" element={<FaqPage />} />
-                    <Route path="/admin" element={<AdminPage />} />
+                    <Route path="/admin" element={<RequireAuth roles={['admin']}><AdminPage /></RequireAuth>} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Suspense>
@@ -181,6 +197,7 @@ export default function PortalApp() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </AuthProvider>
     </LanguageProvider>
   )
 }

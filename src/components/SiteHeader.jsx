@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { BookOpen, CalendarDays, Command, MapPin, Menu, X } from 'lucide-react'
+import { BookOpen, CalendarDays, Command, LogIn, MapPin, Menu, UserRound, X } from 'lucide-react'
 import { useLanguage } from '../i18n/LanguageContext'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
 import useNow from '../hooks/useNow'
 import { dayTitle, getLiveStatus, weekdayId } from '../utils/scheduleLive'
 import { readSavedClass } from '../utils/classStorage'
+import { useAuth } from '../auth/AuthContext'
 
 const navLinks = [
   ['/mektep', 'nav.school'],
@@ -53,6 +54,7 @@ function useScrollHeader() {
 
 export default function SiteHeader({ onOpenPalette }) {
   const { t, lang } = useLanguage()
+  const { session } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const { hidden, progress } = useScrollHeader()
   const now = useNow(30_000)
@@ -147,6 +149,10 @@ export default function SiteHeader({ onOpenPalette }) {
           </nav>
 
           <div className="header-right">
+            <NavLink className="account-link" to={session ? '/account' : '/login'} aria-label={session ? 'Личный кабинет' : 'Войти'}>
+              {session ? <UserRound size={16} /> : <LogIn size={16} />}
+              <span>{session ? (lang === 'ky' ? 'Кабинет' : lang === 'en' ? 'Account' : 'Кабинет') : (lang === 'ky' ? 'Кирүү' : lang === 'en' ? 'Sign in' : 'Войти')}</span>
+            </NavLink>
             <button
               type="button"
               className="palette-trigger"

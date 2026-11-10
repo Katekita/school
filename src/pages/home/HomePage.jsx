@@ -3,23 +3,17 @@ import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import {
   ArrowRight,
   Award,
-  BellRing,
   BookOpen,
-  CalendarDays,
-  DoorOpen,
   ExternalLink,
   GraduationCap,
   MapPin,
   School,
-  Timer,
   UsersRound,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../../i18n/LanguageContext'
 import Reveal from '../../components/Reveal'
-import LiveScheduleWidget from '../../components/LiveScheduleWidget'
 import useSpotlight from '../../hooks/useSpotlight'
-import { scheduleStats } from '../../data/stats'
 import schoolData from '../../data/school'
 
 const directions = [
@@ -31,40 +25,9 @@ const directions = [
   { key: 'alykul', icon: GraduationCap, to: '/about/alykul-osmonov' },
 ]
 
-// Плавный счётчик от 0 до target при появлении в зоне видимости.
-function CountUp({ value, label, icon: Icon, delay = 0 }) {
-  const ref = useRef(null)
-  const reduce = useReducedMotion()
-
-  return (
-    <motion.div
-      ref={ref}
-      className="stat-card spotlight"
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.5, delay: delay / 1000, ease: [0.22, 1, 0.36, 1] }}
-    >
-      <span className="stat-icon">
-        <Icon size={18} />
-      </span>
-      <motion.strong
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.4, delay: reduce ? 0 : 0.25 }}
-      >
-        {value}
-      </motion.strong>
-      <span>{label}</span>
-    </motion.div>
-  )
-}
-
 export default function HomePage() {
   const { t } = useLanguage()
   const gridRef = useSpotlight()
-  const stats = scheduleStats()
   const heroRef = useRef(null)
   const reduce = useReducedMotion()
 
@@ -155,13 +118,6 @@ export default function HomePage() {
         </Reveal>
       </section>
 
-      {/* Живое расписание: что идёт прямо сейчас */}
-      <section className="home-section live-section">
-        <div className="page-container">
-          <LiveScheduleWidget />
-        </div>
-      </section>
-
       <section className="home-section">
         <div className="page-container">
           <div className="section-heading-row">
@@ -189,33 +145,6 @@ export default function HomePage() {
                 </Link>
               </Reveal>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Числа посчитаны из реального расписания 10-х классов */}
-      <section className="home-section soft">
-        <div className="page-container">
-          <div className="section-heading-row">
-            <div>
-              <p className="eyebrow">{t('home.statsEyebrow')}</p>
-              <h2 className="section-title">{t('home.statsTitle')}</h2>
-              <p className="section-intro">{t('home.statsIntro')}</p>
-            </div>
-          </div>
-          <div className="stats-grid">
-            <CountUp value={stats.classes} label={t('home.statClasses')} icon={UsersRound} delay={0} />
-            <CountUp value={stats.lessons} label={t('home.statLessons')} icon={CalendarDays} delay={70} />
-            <CountUp value={stats.subjects} label={t('home.statSubjects')} icon={BookOpen} delay={140} />
-            <CountUp value={stats.rooms} label={t('home.statRooms')} icon={DoorOpen} delay={210} />
-            <CountUp value={stats.lessonMinutes} label={t('home.statMinutes')} icon={Timer} delay={280} />
-            <div className="stat-card stat-card-wide spotlight">
-              <span className="stat-icon">
-                <BellRing size={18} />
-              </span>
-              <strong>{stats.bellRange}</strong>
-              <span>{t('home.statBells')}</span>
-            </div>
           </div>
         </div>
       </section>

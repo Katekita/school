@@ -6,8 +6,6 @@ import { useLanguage } from '../i18n/LanguageContext'
 import PaletteIcon from './PaletteIcon'
 import { buildIndex, searchIndex } from '../utils/searchIndex'
 import { cycleTheme, readTheme } from '../utils/theme'
-import { readSavedClass } from '../utils/classStorage'
-import { downloadIcs } from '../utils/ics'
 
 const RECENTS_KEY = 'school68_recent'
 
@@ -63,13 +61,6 @@ export default function CommandPalette({ open, onClose }) {
         icon: 'Moon',
         run: () => cycleTheme(),
       },
-      {
-        id: 'action:ics',
-        title: `${t('palette.actionIcs')} · ${readSavedClass()}`,
-        group: t('palette.groupActions'),
-        icon: 'CalendarDays',
-        run: () => downloadIcs(readSavedClass(), lang),
-      },
       ...['ky', 'ru', 'en'].map((code) => ({
         id: `action:lang:${code}`,
         title: `${t('palette.actionLang')} — ${code.toUpperCase()}`,
@@ -78,7 +69,7 @@ export default function CommandPalette({ open, onClose }) {
         run: () => setLang(code),
       })),
     ],
-    [t, lang, setLang],
+    [t, setLang],
   )
 
   const results = useMemo(() => {

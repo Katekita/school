@@ -1,197 +1,82 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays, Clock, DoorOpen, GraduationCap } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import PageBanner from '../../components/PageBanner'
 import Reveal from '../../components/Reveal'
-import ScheduleActions from '../../components/ScheduleActions'
 import { useLanguage } from '../../i18n/LanguageContext'
-import useNow from '../../hooks/useNow'
-import useSpotlight from '../../hooks/useSpotlight'
-import { readSavedClass, saveClass } from '../../utils/classStorage'
-import { getLiveStatus, weekdayId } from '../../utils/scheduleLive'
-import {
-  lessonTimes,
-  schedule10,
-  scheduleClasses,
-  scheduleYear,
-  subjectName,
-  weekDays,
-} from '../../data/schedule'
+import { useAuth } from '../../auth/AuthContext'
+import { supabase } from '../../lib/supabase'
+import { weekDays } from '../../data/schedule'
 
-const validDays = weekDays.map((d) => d.id)
+const weekdayNumber = Object.fromEntries(weekDays.map((day, index) => [day.id, index + 1]))
 
 export default function SchedulePage() {
   const { t, lang } = useLanguage()
+  const { profile } = useAuth()
   const [params, setParams] = useSearchParams()
-  const now = useNow(20_000)
+  const [classes, setClasses] = useState([])
+  const [selectedId, setSelectedId] = useState('')
+  const [entries, setEntries] = useState([])
+  const [year, setYear] = useState('2026–2027')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  // Класс живёт в URL (?class=10А) — ссылкой можно поделиться, а кнопка «назад»
-  // в браузере работает как переключатель классов.
-  const urlClass = params.get('class')
-  const urlDay = params.get('day')
-  const selectedClass = scheduleClasses.includes(urlClass) ? urlClass : readSavedClass()
-
-  const live = useMemo(() => getLiveStatus(selectedClass, now), [selectedClass, now])
-  const today = weekdayId(now)
-  const highlightDay = validDays.includes(urlDay) ? urlDay : null
-
-  const days = useMemo(
-    () =>
-      weekDays.map((day) => ({
-        ...day,
-        title: day[lang] || day.ky,
-        lessons: schedule10[selectedClass]?.[day.id] || [],
-      })),
-    [lang, selectedClass],
-  )
-
-  const gridRef = useSpotlight()
-  const activeRef = useRef(null)
-
-  function pickClass(className) {
-    saveClass(className)
-    const next = new URLSearchParams(params)
-    next.set('class', className)
-    next.delete('day')
-    setParams(next, { replace: true })
-  }
-
-  // При ?day=… прокручиваем к нужному дню и подсвечиваем карточку.
   useEffect(() => {
-    if (!highlightDay) return
-    const node = activeRef.current
-    if (!node) return
-    node.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [highlightDay, selectedClass])
+    let active = true
+    async function load() {
+      setLoading(true); setError('')
+      try {
+        let query = supabase.from('classes').select('id,name').order('name')
+        if (profile?.role === 'student') query = query.eq('id', profile.class_id)
+        const { data: classRows, error: classError } = await query
+        if (classError) throw classError
+        const list = classRows || []
+        const fromUrl = params.get('class')
+        const selected = profile?.role === 'student'
+          ? list[0]?.id
+          : (list.some(item => item.id === fromUrl) ? fromUrl : list[0]?.id)
+        let lessons = []
+        if (selected) {
+          const { data, error: scheduleError } = await supabase.from('schedule_entries')
+            .select('weekday,lesson_number,starts_at,ends_at,subject,room,academic_year')
+            .eq('class_id', selected).order('weekday').order('lesson_number')
+          if (scheduleError) throw scheduleError
+          lessons = data || []
+        }
+        if (!active) return
+        setClasses(list); setSelectedId(selected || ''); setEntries(lessons)
+        if (lessons[0]?.academic_year) setYear(lessons[0].academic_year)
+        if (selected && profile?.role !== 'student' && fromUrl !== selected) {
+          const next = new URLSearchParams(params); next.set('class', selected); setParams(next, { replace: true })
+        }
+      } catch {
+        if (active) setError('Не удалось загрузить расписание. Проверьте подключение или обратитесь к администратору.')
+      } finally { if (active) setLoading(false) }
+    }
+    if (supabase && profile) load()
+    return () => { active = false }
+  }, [profile, params, setParams])
 
-  // Если урок идёт — держим карточку «сегодня» в зоне видимости только при входе.
-  const liveIndex = live.kind === 'lesson' ? live.index : -1
+  const selectedClass = classes.find(item => item.id === selectedId)
+  const days = useMemo(() => weekDays.map(day => ({
+    ...day,
+    lessons: entries.filter(item => item.weekday === weekdayNumber[day.id]),
+  })), [entries])
 
-  return (
-    <>
-      <PageBanner title={t('schedule.title')} eyebrow={t('schedule.eyebrow')} />
-      <section className="content-section">
-        <div className="page-container">
-          <Reveal>
-            <div className="schedule-intro">
-              <div className="schedule-intro-copy">
-                <span className="schedule-year">
-                  <CalendarDays size={14} /> {scheduleYear}
-                </span>
-                <h2>{t('schedule.weekTitle')}</h2>
-                <p>{t('schedule.weekText')}</p>
-                <ScheduleActions classKey={selectedClass} lang={lang} />
-              </div>
-              <div className="schedule-intro-badge" aria-hidden="true">
-                <GraduationCap size={22} />
-                <strong>{selectedClass}</strong>
-                <span>{t('schedule.classLabel')}</span>
-              </div>
-            </div>
-          </Reveal>
-
-          <Reveal>
-            <div className="class-switcher" role="group" aria-label={t('schedule.classLabel')}>
-              {scheduleClasses.map((className) => (
-                <button
-                  key={className}
-                  type="button"
-                  className={`class-tab${className === selectedClass ? ' is-active' : ''}`}
-                  aria-pressed={className === selectedClass}
-                  onClick={() => pickClass(className)}
-                >
-                  {className}
-                </button>
-              ))}
-            </div>
-          </Reveal>
-
-          <p className="visually-hidden" role="status">
-            {t('schedule.classLabel')}: {selectedClass}
-          </p>
-
-          <div className="week-grid" ref={gridRef}>
-            {days.map((day, index) => {
-              const isToday = day.id === today
-              return (
-                <Reveal key={day.id} delay={index * 40}>
-                  <article
-                    ref={day.id === highlightDay || (isToday && !highlightDay) ? activeRef : null}
-                    className={`day-card spotlight${isToday ? ' is-today' : ''}${
-                      day.id === highlightDay ? ' is-focused' : ''
-                    }`}
-                  >
-                    <header className="day-card-head">
-                      <h3>{day.title}</h3>
-                      {isToday && <span className="day-today">{t('schedule.today')}</span>}
-                    </header>
-
-                    {day.lessons.length ? (
-                      <ol className="lesson-list">
-                        {day.lessons.map((item, lessonIndex) => {
-                          const time = lessonTimes[lessonIndex]
-                          const isNow = isToday && liveIndex === lessonIndex
-                          return (
-                            <li
-                              className={`lesson-row${isNow ? ' is-now' : ''}`}
-                              key={`${day.id}-${lessonIndex}`}
-                            >
-                              <span className="lesson-num">
-                                {isNow && <span className="lesson-now-dot" aria-hidden="true" />}
-                                {lessonIndex + 1}
-                              </span>
-                              <div className="lesson-body">
-                                <strong className="lesson-subject">
-                                  {subjectName(item.subject, lang)}
-                                </strong>
-                                <span className="lesson-time">
-                                  <Clock size={12} /> {time.start}–{time.end}
-                                </span>
-                              </div>
-                              <span className="lesson-room" title={t('schedule.room')}>
-                                <DoorOpen size={12} /> {item.room || '—'}
-                              </span>
-                            </li>
-                          )
-                        })}
-                      </ol>
-                    ) : (
-                      <p className="day-empty">{t('schedule.noLessons')}</p>
-                    )}
-                  </article>
-                </Reveal>
-              )
-            })}
-          </div>
-
-          <Reveal>
-            <aside className="bells-card">
-              <div className="bells-head">
-                <span className="bells-icon">
-                  <Clock size={18} />
-                </span>
-                <div>
-                  <strong>{t('schedule.bellsTitle')}</strong>
-                  <p>{t('schedule.bellsNote')}</p>
-                </div>
-              </div>
-              <div className="bells-list">
-                {lessonTimes.map((time, index) => (
-                  <div
-                    className={`bell${liveIndex === index ? ' is-now' : ''}`}
-                    key={time.start}
-                  >
-                    <span className="bell-num">{index + 1}</span>
-                    <span className="bell-time">
-                      {time.start}–{time.end}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </aside>
-          </Reveal>
-        </div>
-      </section>
-    </>
-  )
+  return <>
+    <PageBanner title={t('schedule.title')} eyebrow={t('schedule.eyebrow')} />
+    <section className="content-section"><div className="page-container">
+      <Reveal><div className="schedule-intro"><div className="schedule-intro-copy">
+        <span className="schedule-year"><CalendarDays size={14}/>{year}</span>
+        <h2>{t('schedule.weekTitle')}</h2><p>{t('schedule.weekText')}</p>
+      </div><div className="schedule-intro-badge" aria-hidden="true"><GraduationCap size={22}/><strong>{selectedClass?.name || '—'}</strong><span>{t('schedule.classLabel')}</span></div></div></Reveal>
+      {profile?.role !== 'student' && classes.length > 1 && <div className="class-switcher" role="group" aria-label={t('schedule.classLabel')}>
+        {classes.map(item => <button key={item.id} type="button" className={`class-tab${item.id===selectedId?' is-active':''}`} aria-pressed={item.id===selectedId} onClick={()=>{setSelectedId(item.id);const next=new URLSearchParams(params);next.set('class',item.id);setParams(next)}}>{item.name}</button>)}
+      </div>}
+      {error && <p role="alert" className="auth-error">{error}</p>}
+      {loading ? <div className="page-loader" role="status"><span className="page-loader-spinner"/></div> : !entries.length ? <div className="empty-state"><CalendarDays size={30}/><h3>{t('schedule.emptyTitle')}</h3><p>Расписание появится после загрузки и проверки администрацией школы.</p></div> : <div className="week-grid">
+        {days.map(day=><Reveal key={day.id}><article className="day-card"><header className="day-card-head"><h3>{day[lang]||day.ky}</h3></header>{day.lessons.length?<ol className="lesson-list">{day.lessons.map(item=><li className="lesson-row" key={`${day.id}-${item.lesson_number}`}><span className="lesson-num">{item.lesson_number}</span><div className="lesson-body"><strong className="lesson-subject">{item.subject}</strong><span className="lesson-time"><Clock size={12}/> {item.starts_at.slice(0,5)}–{item.ends_at.slice(0,5)}</span></div><span className="lesson-room"><DoorOpen size={12}/>{item.room||'—'}</span></li>)}</ol>:<p className="day-empty">{t('schedule.noLessons')}</p>}</article></Reveal>)}
+      </div>}
+    </div></section>
+  </>
 }

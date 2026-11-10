@@ -31,6 +31,9 @@ jobs:
         run: npm run build
         env:
           GITHUB_PAGES: 'true'
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_LOGIN_EMAIL_DOMAIN: ${{ vars.VITE_LOGIN_EMAIL_DOMAIN }}
       # SPA fallback: Pages serves 404.html for unknown paths, so the router boots
       # on deep links like /school/news or /school/students/schedule.
       - name: Add SPA fallback
