@@ -807,6 +807,407 @@
   }
 }
 
+/* Электронная библиотека: лёгкий поиск и карточки без тяжёлых PDF-вложений. */
+.textbook-library {
+  padding-top: clamp(24px, 4vw, 42px);
+}
+.textbook-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+  margin-bottom: 24px;
+  padding: clamp(22px, 4vw, 38px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: radial-gradient(110% 160% at 0% 0%, rgba(30, 136, 229, 0.12), transparent 60%), var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.textbook-intro-copy {
+  max-width: 760px;
+}
+.textbook-intro-copy .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.textbook-intro-copy h2 {
+  margin: 0 0 9px;
+  color: var(--ink);
+  font-size: clamp(24px, 4vw, 36px);
+  line-height: 1.12;
+}
+.textbook-intro-copy > p {
+  max-width: 62ch;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.textbook-source-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 19px;
+}
+.textbook-source-actions .button-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+}
+.textbook-source-actions .text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.textbook-count-card {
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  width: 118px;
+  height: 118px;
+  border: 1px solid var(--blue-100);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--surface) 80%, var(--blue-50));
+  color: var(--accent-text);
+}
+.textbook-count-card strong {
+  color: var(--ink);
+  font-size: 32px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.textbook-count-card span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.textbook-search-panel {
+  margin: 22px 0 24px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.textbook-search-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 0 15px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-inset);
+  color: var(--muted);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.textbook-search-box:focus-within {
+  border-color: var(--blue-400);
+  box-shadow: 0 0 0 3px var(--blue-100);
+}
+.textbook-search-box input {
+  flex: 1;
+  min-width: 0;
+  min-height: 50px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+}
+.textbook-search-box input::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+.textbook-search-box kbd {
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.textbook-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.textbook-filters label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.textbook-filters label > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.textbook-filters select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+.textbook-results-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.textbook-results-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.textbook-results-meta strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.textbook-results-meta button {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.textbook-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.textbook-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 246px;
+  padding: 19px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.textbook-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--blue-300);
+  box-shadow: var(--shadow-md);
+}
+.textbook-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.textbook-grade,
+.textbook-language {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--blue-50);
+  color: var(--accent-text);
+  font-size: 10px;
+  font-weight: 700;
+}
+.textbook-language {
+  background: var(--surface-inset);
+  color: var(--muted);
+  font-weight: 600;
+}
+.textbook-subject {
+  margin-top: 15px;
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 650;
+}
+.textbook-card h3 {
+  margin-top: 5px;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.4;
+}
+.textbook-details {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 16px;
+  color: var(--body);
+  font-size: 11px;
+}
+.textbook-details span {
+  display: grid;
+  gap: 2px;
+}
+.textbook-details small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.textbook-open-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  margin-top: auto;
+  padding: 0 10px;
+  border: 1px solid var(--blue-100);
+  border-radius: 11px;
+  background: var(--blue-50);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.textbook-open-link:hover {
+  border-color: var(--blue-400);
+  background: var(--blue-100);
+}
+.textbook-more-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 24px 0;
+}
+.textbook-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+}
+.textbook-more span {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: var(--blue-50);
+  font-size: 10px;
+}
+.textbook-source-note {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 28px;
+  padding: 15px 17px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-inset);
+  color: var(--muted);
+}
+.textbook-source-note > svg {
+  flex: 0 0 auto;
+  color: var(--accent-text);
+}
+.textbook-source-note p {
+  flex: 1;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.textbook-source-note strong {
+  color: var(--ink);
+}
+.textbook-source-note a {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--accent-text);
+}
+.textbook-empty {
+  border: 1px dashed var(--line);
+  border-radius: 18px;
+}
+
+@media (max-width: 900px) {
+  .textbook-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .textbook-intro {
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    padding: 20px;
+    border-radius: 19px;
+  }
+  .textbook-intro-copy h2 {
+    font-size: 24px;
+  }
+  .textbook-intro-copy > p {
+    font-size: 13px;
+  }
+  .textbook-count-card {
+    width: 72px;
+    height: 78px;
+    border-radius: 18px;
+  }
+  .textbook-count-card svg {
+    width: 17px;
+  }
+  .textbook-count-card strong {
+    font-size: 22px;
+  }
+  .textbook-count-card span {
+    font-size: 9px;
+  }
+  .textbook-source-actions {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .textbook-search-panel {
+    padding: 13px;
+    border-radius: 16px;
+  }
+  .textbook-search-box {
+    gap: 8px;
+    padding: 0 10px;
+  }
+  .textbook-search-box kbd {
+    display: none;
+  }
+  .textbook-filters {
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+  }
+  .textbook-filters label:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+  .textbook-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .textbook-card {
+    min-height: 0;
+    padding: 16px;
+  }
+  .textbook-source-note {
+    align-items: flex-start;
+    gap: 9px;
+    padding: 13px;
+  }
+}
+
 @media (max-width: 820px) {
   .nav-preferences {
     display: flex;
