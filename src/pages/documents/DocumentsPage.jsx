@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react'
-import { ArrowUpRight, BookOpen, ExternalLink, Library, Search, SlidersHorizontal } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowUpRight, BookOpen, ExternalLink, Library, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import PageBanner from '../../components/PageBanner'
 import { useLanguage } from '../../i18n/LanguageContext'
 import textbookCatalog from '../../data/textbooks.json'
 
 const BOOKS_PER_PAGE = 24
-const officialLibraryUrl = 'https://kitep.edu.kg/'
+const officialLibraryUrl = 'https://www.okuma.kg/'
 const approvedListUrl = 'https://egov.kg/ru/ministry/education/news/46163'
 
 function normalize(value) {
@@ -17,49 +17,48 @@ export default function DocumentsPage() {
   const { t, lang } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get('q') || ''
+  const requestedBookId = searchParams.get('book')
   const [grade, setGrade] = useState('')
-  const [subjectId, setSubjectId] = useState('')
-  const [language, setLanguage] = useState('')
+  const [category, setCategory] = useState('')
   const [visibleCount, setVisibleCount] = useState(BOOKS_PER_PAGE)
+  const readerDialog = useRef(null)
   const books = textbookCatalog.books
+  const selectedBook = books.find((item) => String(item.id) === requestedBookId)
 
-  const subjects = useMemo(() => {
-    const unique = new Map()
-    for (const book of books) {
-      if (!unique.has(book.catalogId)) {
-        unique.set(book.catalogId, {
-          id: String(book.catalogId),
-          grade: book.grade,
-          title: lang === 'ky' ? book.subjectKg : book.subject,
-        })
-      }
-    }
-    return [...unique.values()].sort((a, b) => a.grade - b.grade || a.title.localeCompare(b.title, lang === 'ky' ? 'ky' : 'ru'))
-  }, [books, lang])
+  const categories = useMemo(
+    () => [...new Map(books.flatMap((book) => book.categoryIds.map((id, index) => [
+      String(id),
+      { value: String(id), label: lang === 'ky' ? book.categories[index] : book.categoriesRu[index] },
+    ]))).values()]
+      .sort((a, b) => a.label.localeCompare(b.label, lang)),
+    [books, lang],
+  )
 
   const results = useMemo(() => {
     const search = normalize(query.trim())
     return books.filter((book) => {
-      if (grade && book.grade !== Number(grade)) return false
-      if (subjectId && String(book.catalogId) !== subjectId) return false
-      if (language && book.language !== language) return false
+      if (grade && !book.grades.includes(Number(grade))) return false
+      if (category && !book.categoryIds.includes(Number(category))) return false
       if (!search) return true
-      return normalize([
-        book.title,
-        book.titleKg,
-        book.subject,
-        book.subjectKg,
-        book.author,
-        book.publisher,
-        book.grade,
-        book.year,
-      ].join(' ')).includes(search)
+      return normalize([book.title, ...book.categories, ...book.categoriesRu, book.author, book.grades.join(' ')].join(' ')).includes(search)
     })
-  }, [books, grade, language, query, subjectId])
+  }, [books, category, grade, query])
+
+  useEffect(() => {
+    const dialog = readerDialog.current
+    if (selectedBook && dialog && !dialog.open) dialog.showModal()
+    else if (!selectedBook && dialog?.open) dialog.close()
+  }, [selectedBook])
 
   function updateFilter(setter, value) {
     setter(value)
     setVisibleCount(BOOKS_PER_PAGE)
+  }
+
+  function openBook(book) {
+    const next = new URLSearchParams(searchParams)
+    next.set('book', String(book.id))
+    setSearchParams(next)
   }
 
   return (
@@ -103,13 +102,10 @@ export default function DocumentsPage() {
                 autoComplete="off"
               />
             </label>
-            <div className="textbook-filters">
+            <div className="textbook-filters textbook-filters-two">
               <label>
                 <span>{t('documents.grade')}</span>
-                <select value={grade} onChange={(event) => {
-                  updateFilter(setGrade, event.target.value)
-                  setSubjectId('')
-                }}>
+                <select value={grade} onChange={(event) => updateFilter(setGrade, event.target.value)}>
                   <option value="">{t('documents.allGrades')}</option>
                   {Array.from({ length: 11 }, (_, index) => index + 1).map((item) => (
                     <option value={item} key={item}>{item} {t('documents.grade')}</option>
@@ -118,32 +114,19 @@ export default function DocumentsPage() {
               </label>
               <label>
                 <span>{t('documents.subject')}</span>
-                <select value={subjectId} onChange={(event) => updateFilter(setSubjectId, event.target.value)}>
+                <select value={category} onChange={(event) => updateFilter(setCategory, event.target.value)}>
                   <option value="">{t('documents.allSubjects')}</option>
-                  {subjects
-                    .filter((item) => !grade || item.grade === Number(grade))
-                    .map((item) => <option value={item.id} key={item.id}>
-                      {!grade && `${item.grade} ${t('documents.grade')} · `}{item.title}
-                    </option>)}
-                </select>
-              </label>
-              <label>
-                <span>{t('documents.language')}</span>
-                <select value={language} onChange={(event) => updateFilter(setLanguage, event.target.value)}>
-                  <option value="">{t('documents.allLanguages')}</option>
-                  <option value="kg">{t('documents.languageKg')}</option>
-                  <option value="ru">{t('documents.languageRu')}</option>
+                  {categories.map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}
                 </select>
               </label>
             </div>
             <div className="textbook-results-meta" aria-live="polite">
               <span><SlidersHorizontal size={14} /> {t('documents.found')}: <strong>{results.length}</strong></span>
-              {(grade || subjectId || language || query) && (
+              {(grade || category || query) && (
                 <button type="button" onClick={() => {
                   setSearchParams({}, { replace: true })
                   setGrade('')
-                  setSubjectId('')
-                  setLanguage('')
+                  setCategory('')
                   setVisibleCount(BOOKS_PER_PAGE)
                 }}>
                   {t('documents.resetFilters')}
@@ -156,22 +139,18 @@ export default function DocumentsPage() {
             <>
               <div className="textbook-grid">
                 {results.slice(0, visibleCount).map((book) => (
-                  <article className="textbook-card" key={`${book.id}-${book.grade}-${book.language}`}>
+                  <article className="textbook-card" key={book.id}>
                     <div className="textbook-card-top">
-                      <span className="textbook-grade">{book.grade} {t('documents.grade')}</span>
-                      <span className="textbook-language">{t(book.language === 'kg' ? 'documents.languageKg' : 'documents.languageRu')}</span>
+                      <span className="textbook-grade">{book.grades.join(', ')} {t('documents.grade')}</span>
                     </div>
-                    <span className="textbook-subject">{lang === 'ky' ? book.subjectKg : book.subject}</span>
-                    <h3>{lang === 'ky' ? (book.titleKg || book.title) : book.title}</h3>
+                    <span className="textbook-subject">{(lang === 'ky' ? book.categories : book.categoriesRu).join(' · ')}</span>
+                    <h3>{book.title}</h3>
                     <div className="textbook-details">
                       {book.author && <span><small>{t('documents.author')}</small>{book.author}</span>}
-                      {(book.publisher || book.year) && (
-                        <span><small>{t('documents.publisher')} · {t('documents.year')}</small>{[book.publisher, book.year].filter(Boolean).join(' · ')}</span>
-                      )}
                     </div>
-                    <a className="textbook-open-link" href={book.readUrl} target="_blank" rel="noreferrer">
-                      <BookOpen size={15} /> {t('documents.readOnline')} <ExternalLink size={13} />
-                    </a>
+                    <button className="textbook-open-link" type="button" onClick={() => openBook(book)}>
+                      <BookOpen size={15} /> {t('documents.readOnline')}
+                    </button>
                   </article>
                 ))}
               </div>
@@ -200,6 +179,40 @@ export default function DocumentsPage() {
           </aside>
         </div>
       </section>
+      <dialog
+        ref={readerDialog}
+        className="book-reader-dialog"
+        aria-labelledby="book-reader-title"
+        onClose={() => {
+          setSearchParams((current) => {
+            const next = new URLSearchParams(current)
+            next.delete('book')
+            return next
+          }, { replace: true })
+        }}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close()
+        }}
+      >
+        {selectedBook && (
+          <>
+            <header className="book-reader-head">
+              <div>
+                <span>{selectedBook.grades.join(', ')} {t('documents.grade')} · {(lang === 'ky' ? selectedBook.categories : selectedBook.categoriesRu).join(' · ')}</span>
+                <h2 id="book-reader-title">{selectedBook.title}</h2>
+              </div>
+              <button type="button" className="book-reader-close" aria-label={t('documents.closeReader')} onClick={() => readerDialog.current?.close()}>
+                <X size={20} />
+              </button>
+            </header>
+            <iframe className="book-reader-frame" src={selectedBook.readerUrl} title={selectedBook.title} allowFullScreen referrerPolicy="no-referrer" />
+            <footer className="book-reader-foot">
+              <span>{t('documents.readerNote')}</span>
+              <a href={selectedBook.sourcePage} target="_blank" rel="noreferrer">{t('documents.readerFallback')} <ExternalLink size={13} /></a>
+            </footer>
+          </>
+        )}
+      </dialog>
     </>
   )
 }
