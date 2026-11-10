@@ -28,14 +28,14 @@ function pushRecent(id) {
 }
 
 export default function CommandPalette({ open, onClose }) {
-  const { t, lang, get, setLang } = useLanguage()
+  const { t, get, setLang } = useLanguage()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef(null)
   const listRef = useRef(null)
 
-  const index = useMemo(() => buildIndex({ t, get, lang }), [t, get, lang])
+  const index = useMemo(() => buildIndex({ t, get }), [t, get])
 
   // Быстрые действия доступны всегда, даже без введённого запроса.
   const actions = useMemo(

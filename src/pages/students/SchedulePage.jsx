@@ -1,82 +1,326 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, Clock, DoorOpen, GraduationCap } from 'lucide-react'
+import { CalendarDays, Clock, DoorOpen, GraduationCap, Navigation } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import PageBanner from '../../components/PageBanner'
 import Reveal from '../../components/Reveal'
+import ScheduleActions from '../../components/ScheduleActions'
 import { useLanguage } from '../../i18n/LanguageContext'
 import { useAuth } from '../../auth/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { weekDays } from '../../data/schedule'
+import useNow from '../../hooks/useNow'
+import { lessonTimes, scheduleYear, subjectName, weekDays } from '../../data/schedule'
+import { readSavedClass, saveClass } from '../../utils/classStorage'
 
 const weekdayNumber = Object.fromEntries(weekDays.map((day, index) => [day.id, index + 1]))
+const dayIds = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+
+function timeMinutes(value) {
+  const [hours, minutes] = String(value).split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+function formatTime(value) {
+  return String(value || '').slice(0, 5)
+}
+
+function getTodayStatus(entries, now) {
+  const weekday = now.getDay()
+  if (weekday === 0 || weekday === 6) return { kind: 'weekend' }
+
+  const dayNumber = weekday
+  const lessons = entries
+    .filter((entry) => entry.weekday === dayNumber)
+    .sort((a, b) => a.lesson_number - b.lesson_number)
+  if (!lessons.length) return { kind: 'empty' }
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+  const current = lessons.find((entry) =>
+    currentMinutes >= timeMinutes(entry.starts_at) && currentMinutes < timeMinutes(entry.ends_at),
+  )
+  if (current) {
+    const start = timeMinutes(current.starts_at)
+    const end = timeMinutes(current.ends_at)
+    return {
+      kind: 'lesson',
+      lesson: current,
+      remaining: end - currentMinutes,
+      progress: (currentMinutes - start) / Math.max(1, end - start),
+    }
+  }
+
+  const next = lessons.find((entry) => timeMinutes(entry.starts_at) > currentMinutes)
+  if (next) return { kind: 'next', lesson: next, remaining: timeMinutes(next.starts_at) - currentMinutes }
+  return { kind: 'done' }
+}
 
 export default function SchedulePage() {
   const { t, lang } = useLanguage()
   const { profile } = useAuth()
+  const profileId = profile?.user_id
+  const profileClassId = profile?.class_id
+  const role = profile?.role
   const [params, setParams] = useSearchParams()
+  const now = useNow(20_000)
   const [classes, setClasses] = useState([])
   const [selectedId, setSelectedId] = useState('')
   const [entries, setEntries] = useState([])
-  const [year, setYear] = useState('2026–2027')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let active = true
     async function load() {
-      setLoading(true); setError('')
+      if (!supabase) {
+        setError('Подключение к расписанию пока недоступно. Обратитесь к администратору школы.')
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      setError('')
+      setEntries([])
       try {
         let query = supabase.from('classes').select('id,name').order('name')
-        if (profile?.role === 'student') query = query.eq('id', profile.class_id)
+        if (role === 'student') query = query.eq('id', profileClassId)
         const { data: classRows, error: classError } = await query
         if (classError) throw classError
+
         const list = classRows || []
         const fromUrl = params.get('class')
-        const selected = profile?.role === 'student'
+        const savedName = readSavedClass()
+        const selected = role === 'student'
           ? list[0]?.id
-          : (list.some(item => item.id === fromUrl) ? fromUrl : list[0]?.id)
+          : list.find((item) => item.id === fromUrl || item.name === fromUrl)?.id
+            || list.find((item) => item.name === savedName)?.id
+            || list[0]?.id
+
         let lessons = []
         if (selected) {
-          const { data, error: scheduleError } = await supabase.from('schedule_entries')
+          const { data, error: scheduleError } = await supabase
+            .from('schedule_entries')
             .select('weekday,lesson_number,starts_at,ends_at,subject,room,academic_year')
-            .eq('class_id', selected).order('weekday').order('lesson_number')
+            .eq('class_id', selected)
+            .eq('academic_year', scheduleYear)
+            .order('weekday')
+            .order('lesson_number')
           if (scheduleError) throw scheduleError
           lessons = data || []
         }
+
         if (!active) return
-        setClasses(list); setSelectedId(selected || ''); setEntries(lessons)
-        if (lessons[0]?.academic_year) setYear(lessons[0].academic_year)
-        if (selected && profile?.role !== 'student' && fromUrl !== selected) {
-          const next = new URLSearchParams(params); next.set('class', selected); setParams(next, { replace: true })
+        setClasses(list)
+        setSelectedId(selected || '')
+        setEntries(lessons)
+        const selectedClass = list.find((item) => item.id === selected)
+        if (selectedClass && role !== 'student') saveClass(selectedClass.name)
+
+        if (selected && role !== 'student' && fromUrl !== selected) {
+          const next = new URLSearchParams(params)
+          next.set('class', selected)
+          setParams(next, { replace: true })
         }
       } catch {
         if (active) setError('Не удалось загрузить расписание. Проверьте подключение или обратитесь к администратору.')
-      } finally { if (active) setLoading(false) }
+      } finally {
+        if (active) setLoading(false)
+      }
     }
-    if (supabase && profile) load()
+
+    if (role) load()
     return () => { active = false }
-  }, [profile, params, setParams])
+  }, [profileId, profileClassId, role, params, setParams])
 
-  const selectedClass = classes.find(item => item.id === selectedId)
-  const days = useMemo(() => weekDays.map(day => ({
+  const selectedClass = classes.find((item) => item.id === selectedId)
+  const days = useMemo(() => weekDays.map((day) => ({
     ...day,
-    lessons: entries.filter(item => item.weekday === weekdayNumber[day.id]),
+    lessons: entries.filter((item) => item.weekday === weekdayNumber[day.id]),
   })), [entries])
+  const requestedDay = weekDays.some((day) => day.id === params.get('day')) ? params.get('day') : ''
+  const todayId = dayIds[now.getDay()]
+  const live = useMemo(() => getTodayStatus(entries, now), [entries, now])
+  const liveTitle = live.kind === 'lesson'
+    ? subjectName(live.lesson.subject, lang)
+    : live.kind === 'next'
+      ? subjectName(live.lesson.subject, lang)
+      : live.kind === 'weekend'
+        ? t('live.weekend')
+        : live.kind === 'done'
+          ? t('live.done')
+          : t('live.empty')
+  const liveLabel = live.kind === 'lesson'
+    ? t('live.now')
+    : live.kind === 'next'
+      ? t('live.next')
+      : t('live.liveTitle')
 
-  return <>
-    <PageBanner title={t('schedule.title')} eyebrow={t('schedule.eyebrow')} />
-    <section className="content-section"><div className="page-container">
-      <Reveal><div className="schedule-intro"><div className="schedule-intro-copy">
-        <span className="schedule-year"><CalendarDays size={14}/>{year}</span>
-        <h2>{t('schedule.weekTitle')}</h2><p>{t('schedule.weekText')}</p>
-      </div><div className="schedule-intro-badge" aria-hidden="true"><GraduationCap size={22}/><strong>{selectedClass?.name || '—'}</strong><span>{t('schedule.classLabel')}</span></div></div></Reveal>
-      {profile?.role !== 'student' && classes.length > 1 && <div className="class-switcher" role="group" aria-label={t('schedule.classLabel')}>
-        {classes.map(item => <button key={item.id} type="button" className={`class-tab${item.id===selectedId?' is-active':''}`} aria-pressed={item.id===selectedId} onClick={()=>{setSelectedId(item.id);const next=new URLSearchParams(params);next.set('class',item.id);setParams(next)}}>{item.name}</button>)}
-      </div>}
-      {error && <p role="alert" className="auth-error">{error}</p>}
-      {loading ? <div className="page-loader" role="status"><span className="page-loader-spinner"/></div> : !entries.length ? <div className="empty-state"><CalendarDays size={30}/><h3>{t('schedule.emptyTitle')}</h3><p>Расписание появится после загрузки и проверки администрацией школы.</p></div> : <div className="week-grid">
-        {days.map(day=><Reveal key={day.id}><article className="day-card"><header className="day-card-head"><h3>{day[lang]||day.ky}</h3></header>{day.lessons.length?<ol className="lesson-list">{day.lessons.map(item=><li className="lesson-row" key={`${day.id}-${item.lesson_number}`}><span className="lesson-num">{item.lesson_number}</span><div className="lesson-body"><strong className="lesson-subject">{item.subject}</strong><span className="lesson-time"><Clock size={12}/> {item.starts_at.slice(0,5)}–{item.ends_at.slice(0,5)}</span></div><span className="lesson-room"><DoorOpen size={12}/>{item.room||'—'}</span></li>)}</ol>:<p className="day-empty">{t('schedule.noLessons')}</p>}</article></Reveal>)}
-      </div>}
-    </div></section>
-  </>
+  useEffect(() => {
+    if (loading || !requestedDay) return
+    document.getElementById(`schedule-${requestedDay}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [loading, requestedDay, selectedId])
+
+  function selectClass(item) {
+    setSelectedId(item.id)
+    saveClass(item.name)
+    const next = new URLSearchParams(params)
+    next.set('class', item.id)
+    next.delete('day')
+    setParams(next, { replace: true })
+  }
+
+  function jumpToToday() {
+    if (todayId === 'sun' || todayId === 'sat') return
+    document.getElementById(`schedule-${todayId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  const year = entries[0]?.academic_year || scheduleYear
+
+  return (
+    <>
+      <PageBanner title={t('schedule.title')} eyebrow={t('schedule.eyebrow')} />
+      <section className="content-section">
+        <div className="page-container">
+          <Reveal>
+            <div className="schedule-intro">
+              <div className="schedule-intro-copy">
+                <span className="schedule-year"><CalendarDays size={14} />{year}</span>
+                <h2>{t('schedule.weekTitle')}</h2>
+                <p>{t('schedule.weekText')}</p>
+                {selectedClass && entries.length > 0 && <ScheduleActions classKey={selectedClass.name} lang={lang} entries={entries} />}
+              </div>
+              <div className="schedule-intro-badge" aria-hidden="true">
+                <GraduationCap size={22} />
+                <strong>{selectedClass?.name || '—'}</strong>
+                <span>{t('schedule.classLabel')}</span>
+              </div>
+            </div>
+          </Reveal>
+
+          {profile?.role !== 'student' && classes.length > 1 && (
+            <Reveal>
+              <div className="class-switcher" role="group" aria-label={t('schedule.classLabel')}>
+                {classes.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`class-tab${item.id === selectedId ? ' is-active' : ''}`}
+                    aria-pressed={item.id === selectedId}
+                    onClick={() => selectClass(item)}
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+            </Reveal>
+          )}
+
+          {error && <p role="alert" className="auth-error">{error}</p>}
+          {loading ? (
+            <div className="page-loader" role="status" aria-live="polite">
+              <span className="page-loader-spinner" />
+            </div>
+          ) : entries.length > 0 ? (
+            <>
+              <Reveal>
+                <section className={`schedule-live-card${live.kind === 'lesson' ? ' is-active' : ''}`} aria-live="polite">
+                  <div className="schedule-live-copy">
+                    <span className="live-card-eyebrow">
+                      <span className={`live-card-dot${live.kind === 'lesson' ? ' is-pulsing' : ''}`} aria-hidden="true" />
+                      {liveLabel}
+                    </span>
+                    <h2>{liveTitle}</h2>
+                    {(live.kind === 'lesson' || live.kind === 'next') && (
+                      <p className="schedule-live-meta">
+                        <Clock size={14} /> {live.lesson.lesson_number}. {formatTime(live.lesson.starts_at)}–{formatTime(live.lesson.ends_at)}
+                        {live.lesson.room && <><DoorOpen size={14} /> {live.lesson.room}</>}
+                      </p>
+                    )}
+                  </div>
+                  {(live.kind === 'lesson' || live.kind === 'next') && (
+                    <div className="schedule-live-countdown">
+                      <strong>{live.kind === 'lesson' ? t('live.endsIn') : t('live.startsIn')}</strong>
+                      <span>{live.remaining} {t('live.minutes')}</span>
+                    </div>
+                  )}
+                  {live.kind === 'lesson' && (
+                    <div className="schedule-live-progress" aria-hidden="true">
+                      <span style={{ transform: `scaleX(${live.progress})` }} />
+                    </div>
+                  )}
+                  {todayId !== 'sun' && todayId !== 'sat' && (
+                    <button type="button" className="schedule-today-button" onClick={jumpToToday}>
+                      <Navigation size={15} /> {t('schedule.today')}
+                    </button>
+                  )}
+                </section>
+              </Reveal>
+
+              <div className="week-grid">
+                {days.map((day, index) => {
+                  const isToday = day.id === todayId
+                  return (
+                    <Reveal key={day.id} delay={index * 35}>
+                      <article id={`schedule-${day.id}`} className={`day-card${isToday ? ' is-today' : ''}${requestedDay === day.id ? ' is-focused' : ''}`}>
+                        <header className="day-card-head">
+                          <h3>{day[lang] || day.ky}</h3>
+                          {isToday && <span className="day-today">{t('schedule.today')}</span>}
+                        </header>
+                        {day.lessons.length ? (
+                          <ol className="lesson-list">
+                            {day.lessons.map((item) => {
+                              const isNow = isToday && live.kind === 'lesson' && live.lesson.lesson_number === item.lesson_number
+                              return (
+                                <li className={`lesson-row${isNow ? ' is-now' : ''}`} key={`${day.id}-${item.lesson_number}`}>
+                                  <span className="lesson-num">
+                                    {isNow && <span className="lesson-now-dot" aria-hidden="true" />}
+                                    {item.lesson_number}
+                                  </span>
+                                  <div className="lesson-body">
+                                    <strong className="lesson-subject">{subjectName(item.subject, lang)}</strong>
+                                    <span className="lesson-time"><Clock size={12} /> {formatTime(item.starts_at)}–{formatTime(item.ends_at)}</span>
+                                  </div>
+                                  <span className="lesson-room" title={t('schedule.room')}><DoorOpen size={12} />{item.room || '—'}</span>
+                                </li>
+                              )
+                            })}
+                          </ol>
+                        ) : (
+                          <p className="day-empty">{t('schedule.noLessons')}</p>
+                        )}
+                      </article>
+                    </Reveal>
+                  )
+                })}
+              </div>
+
+              <Reveal>
+                <aside className="bells-card">
+                  <div className="bells-head">
+                    <span className="bells-icon"><Clock size={18} /></span>
+                    <div>
+                      <strong>{t('schedule.bellsTitle')}</strong>
+                      <p>{t('schedule.bellsNote')}</p>
+                    </div>
+                  </div>
+                  <div className="bells-list">
+                    {lessonTimes.map((time, index) => (
+                      <div className={`bell${live.kind === 'lesson' && live.lesson.lesson_number === index + 1 ? ' is-now' : ''}`} key={time.start}>
+                        <span className="bell-num">{index + 1}</span>
+                        <span className="bell-time">{time.start}–{time.end}</span>
+                      </div>
+                    ))}
+                  </div>
+                </aside>
+              </Reveal>
+            </>
+          ) : (
+            <div className="empty-state">
+              <CalendarDays size={30} />
+              <h3>{t('schedule.emptyTitle')}</h3>
+              <p>{t('schedule.emptyText')}</p>
+            </div>
+          )}
+        </div>
+      </section>
+    </>
+  )
 }

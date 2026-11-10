@@ -1,17 +1,15 @@
-import { scheduleClasses } from '../data/schedule'
-
 const CLASS_STORAGE_KEY = 'school68_schedule_class'
 
-// Выбранный класс запоминаем локально: шапке и главной нужен «следующий урок»
-// без запроса к серверу, а страница расписания дополнительно читает ?class=.
+// Запоминаем последний выбранный класс. Страница сверяет его с перечнем,
+// который получает из защищённой таблицы Supabase.
 export function readSavedClass() {
   try {
     const saved = localStorage.getItem(CLASS_STORAGE_KEY)
-    if (saved && scheduleClasses.includes(saved)) return saved
+    if (saved) return saved
   } catch {
     /* localStorage может быть недоступен */
   }
-  return scheduleClasses[0]
+  return ''
 }
 
 export function saveClass(className) {

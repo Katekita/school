@@ -4,9 +4,6 @@ import { BookOpen, CalendarDays, Command, LogIn, MapPin, Menu, UserRound, X } fr
 import { useLanguage } from '../i18n/LanguageContext'
 import LanguageSwitcher from './LanguageSwitcher'
 import ThemeSwitcher from './ThemeSwitcher'
-import useNow from '../hooks/useNow'
-import { dayTitle, getLiveStatus, weekdayId } from '../utils/scheduleLive'
-import { readSavedClass } from '../utils/classStorage'
 import { useAuth } from '../auth/AuthContext'
 
 const navLinks = [
@@ -22,8 +19,6 @@ export default function SiteHeader({ onOpenPalette }) {
   const { t, lang } = useLanguage()
   const { session } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
-  const now = useNow(30_000)
-
   const links = navLinks.map(([to, key]) => [t(key), to])
 
   // Мобильное меню: блокируем прокрутку страницы и закрываем по Escape.
@@ -53,14 +48,6 @@ export default function SiteHeader({ onOpenPalette }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onOpenPalette])
 
-  const live = getLiveStatus(readSavedClass(), now)
-  const liveLabel =
-    live.kind === 'lesson'
-      ? `${t('live.now')} · ${live.index + 1}`
-      : live.kind === 'break'
-        ? t('live.break')
-        : `${dayTitle(weekdayId(now), lang)}`
-
   return (
     <>
       <a className="skip-link" href="#main-content">
@@ -77,10 +64,6 @@ export default function SiteHeader({ onOpenPalette }) {
           </span>
         </div>
         <div className="utility-right">
-          <span className={`utility-live is-${live.kind}`}>
-            <span className="utility-dot" aria-hidden="true" />
-            {liveLabel}
-          </span>
           <NavLink to="/dariek">{t('header.map')}</NavLink>
           <NavLink to="/baylanysh">{t('header.leaveRequest')}</NavLink>
         </div>

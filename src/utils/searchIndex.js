@@ -1,7 +1,5 @@
-import { schedule10, scheduleClasses, subjectName, weekDays } from '../data/schedule'
-
 // Единый индекс для командной палитры (Ctrl+K) и страницы поиска.
-// Собирается из переводов: разделы, FAQ, предметы расписания.
+// Собирается из переводов: разделы и FAQ. Закрытые уроки в поиск не попадают.
 
 const sections = [
   { to: '/', group: 'nav', key: 'common.backHome', icon: 'Home' },
@@ -22,7 +20,7 @@ const sections = [
   { to: '/search', group: 'nav', key: 'common.search', icon: 'Search' },
 ]
 
-export function buildIndex({ t, get, lang }) {
+export function buildIndex({ t, get }) {
   const items = sections.map((s) => ({
     id: `section:${s.to}`,
     title: t(s.key),
@@ -45,28 +43,6 @@ export function buildIndex({ t, get, lang }) {
       kind: 'faq',
     })
   })
-
-  // Предметы расписания — чтобы «алгебра» вела сразу к нужному дню/классу.
-  const seen = new Set()
-  for (const classKey of scheduleClasses) {
-    for (const day of weekDays) {
-      for (const lesson of schedule10[classKey]?.[day.id] || []) {
-        const name = subjectName(lesson.subject, lang)
-        const uid = `${lesson.subject}`
-        if (seen.has(uid)) continue
-        seen.add(uid)
-        items.push({
-          id: `subject:${uid}`,
-          title: name,
-          subtitle: `${t('schedule.classLabel')} ${classKey}`,
-          group: t('palette.groupSubjects'),
-          to: `/students/schedule?class=${classKey}&day=${day.id}`,
-          icon: 'BookOpen',
-          kind: 'subject',
-        })
-      }
-    }
-  }
 
   return items
 }

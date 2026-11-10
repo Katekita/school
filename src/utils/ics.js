@@ -28,19 +28,33 @@ function line(value) {
   return `${value.slice(0, 74)}\r\n ${value.slice(74)}`
 }
 
-export function buildIcs(classKey, lang) {
-  const lessons = schedule10[classKey] || {}
+export function buildIcs(classKey, lang, scheduleEntries = null) {
   const monday = currentWeekStart()
   const stamp = new Date()
 
   const events = []
-  for (const day of weekDays) {
-    const offset = dayOffsets[day.id]
-    if (offset === undefined) continue
-    const items = lessons[day.id] || []
-    items.forEach((item, index) => {
-      const time = lessonTimes[index]
-      if (!time) return
+  const rows = Array.isArray(scheduleEntries)
+    ? scheduleEntries.map((entry) => ({
+        day: weekDays[entry.weekday - 1],
+        index: entry.lesson_number - 1,
+        item: entry,
+        time: {
+          start: String(entry.starts_at).slice(0, 5),
+          end: String(entry.ends_at).slice(0, 5),
+        },
+      }))
+    : weekDays.flatMap((day) =>
+        (schedule10[classKey]?.[day.id] || []).map((item, index) => ({
+          day,
+          index,
+          item,
+          time: lessonTimes[index],
+        })),
+      )
+
+  for (const { day, index, item, time } of rows) {
+      if (!day || dayOffsets[day.id] === undefined || !time) continue
+      const offset = dayOffsets[day.id]
       const [sh, sm] = time.start.split(':').map(Number)
       const [eh, em] = time.end.split(':').map(Number)
       const start = new Date(monday)
@@ -65,12 +79,11 @@ export function buildIcs(classKey, lang) {
                 (item.room ? ` · ${item.room}` : ''),
             )}`,
           ),
-          line(`LOCATION:${escapeText(`№68 мектеп, ${day.title || ''}`)}`),
+          line(`LOCATION:${escapeText(`№68 мектеп, ${day[lang] || day.ky}`)}`),
           'RRULE:FREQ=WEEKLY',
           'END:VEVENT',
         ].join('\r\n'),
       )
-    })
   }
 
   return [
@@ -85,8 +98,8 @@ export function buildIcs(classKey, lang) {
   ].join('\r\n')
 }
 
-export function downloadIcs(classKey, lang) {
-  const blob = new Blob([buildIcs(classKey, lang)], { type: 'text/calendar;charset=utf-8' })
+export function downloadIcs(classKey, lang, scheduleEntries = null) {
+  const blob = new Blob([buildIcs(classKey, lang, scheduleEntries)], { type: 'text/calendar;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
