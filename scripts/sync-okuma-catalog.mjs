@@ -184,6 +184,10 @@ const catalog = books
     || a.categories[0].localeCompare(b.categories[0], 'ky')
     || a.title.localeCompare(b.title, 'ky'))
 
+if (!catalog.length) {
+  throw new Error('Okuma catalog sync returned no school books; keeping the existing catalog unchanged')
+}
+
 await mkdir(dirname(outputPath), { recursive: true })
 await writeFile(outputPath, `${JSON.stringify({
   source: baseUrl,
