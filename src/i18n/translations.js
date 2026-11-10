@@ -254,6 +254,8 @@ export const translations = {
       weekText:
         'Классыңызды тандап, жума бою сабактарды, кабинеттерди жана коңгуроо убактыларын көрүңүз.',
       today: 'Бүгүн',
+      weekView: 'Жума бою',
+      dayPlan: 'Бүгүнкү сабактар',
       bellsTitle: 'Коңгуроолор',
       bellsNote:
         'Сабактар 07:30да башталып, 12:30да бүтөт. Үчүнчү сабактан кийинки тыныгуу 10 мүнөт, калгандары 5 мүнөт.',
@@ -689,6 +691,8 @@ export const translations = {
       weekText:
         'Выберите свой класс и посмотрите уроки на неделю, кабинеты и время звонков.',
       today: 'Сегодня',
+      weekView: 'Вся неделя',
+      dayPlan: 'План уроков на сегодня',
       bellsTitle: 'Расписание звонков',
       bellsNote:
         'Уроки начинаются в 07:30 и заканчиваются в 12:30. Перемена после третьего урока — 10 минут, остальные — по 5 минут.',
@@ -1123,6 +1127,8 @@ export const translations = {
       weekTitle: 'Grade 10 timetable',
       weekText: 'Pick your class to see the weekly lessons, classrooms and bell times.',
       today: 'Today',
+      weekView: 'Full week',
+      dayPlan: "Today's lesson plan",
       bellsTitle: 'Bell times',
       bellsNote:
         'Lessons start at 07:30 and finish at 12:30. The break after the third lesson is 10 minutes; all other breaks are 5 minutes.',
