@@ -72,6 +72,19 @@ test('news archive filters stories by day and opens them in the viewer', async (
   await expect(page.getByRole('dialog', { name: /Демонстрационная новость 2/ })).toBeVisible()
 })
 
+test('empty news displays a clearly labelled placeholder on home and archive pages', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
+
+  for (const route of ['/', '/news']) {
+    await page.goto(route)
+    const placeholder = page.locator('.news-empty-card')
+    await expect(placeholder).toBeVisible()
+    await expect(placeholder.getByRole('heading', { name: 'Официальные публикации пока не добавлены' })).toBeVisible()
+    await expect(placeholder.getByRole('link', { name: /68\.school_/ })).toHaveAttribute('href', 'https://www.instagram.com/68.school_/')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280)
+  }
+})
+
 test('touch swipes change stories and close the viewer; keyboard changes slides', async ({ browser }) => {
   const page = await browser.newPage({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true })
   await page.addInitScript(() => {

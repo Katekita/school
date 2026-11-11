@@ -2100,6 +2100,15 @@
 .news-strip-dots { display: flex; justify-content: center; gap: 6px; }
 .news-strip-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
 .news-strip-dots span.is-active { background: var(--accent-text); transform: scale(1.25); }
+.news-empty-card { display: flex; min-height: 190px; align-items: flex-start; gap: 18px; padding: clamp(20px, 4vw, 32px); color: var(--body); background: linear-gradient(140deg, var(--surface), var(--surface-2)); border: 1px solid var(--line); border-radius: 20px; }
+.news-empty-icon { display: grid; width: 48px; height: 48px; flex: 0 0 48px; place-items: center; color: var(--on-brand); background: var(--blue-800); border-radius: 15px; }
+.news-empty-copy { display: grid; justify-items: start; gap: 9px; }
+.news-empty-copy .eyebrow { margin: 0; }
+.news-empty-copy h3 { margin: 0; color: var(--ink); font-size: clamp(19px, 3vw, 25px); }
+.news-empty-copy > p:not(.eyebrow) { max-width: 680px; margin: 0; line-height: 1.6; }
+.news-empty-copy > a { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; color: var(--accent-text); font-weight: 750; text-decoration: none; }
+.news-empty-copy > a:hover { text-decoration: underline; }
+.news-empty-card a:focus-visible { outline: 3px solid var(--accent-text); outline-offset: 3px; }
 .news-archive { display: grid; gap: 20px; }
 .news-archive-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--accent-text); }
 .news-archive-heading .eyebrow { margin-bottom: 5px; }
@@ -2170,6 +2179,8 @@
 @keyframes news-slide-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
 @media (max-width: 600px) {
   .news-strip-card { flex-basis: 82vw; }
+  .news-empty-card { gap: 12px; padding: 18px; }
+  .news-empty-icon { width: 40px; height: 40px; flex-basis: 40px; border-radius: 12px; }
   .news-viewer { inset: 0; width: 100vw; height: 100dvh; border: 0; border-radius: 0; transform: none; }
   .news-viewer[open] { animation-name: news-viewer-mobile-in; }
   .news-viewer.is-closing { animation-name: news-viewer-mobile-out; }
