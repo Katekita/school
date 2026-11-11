@@ -10,7 +10,7 @@ CSV files must have a header row. Required columns:
 | Events | `title`, `date`, `summary` |
 | Documents | `title`, `url`, `category` |
 
-Additional columns are preserved in generated JSON. Dates and URLs are supplied by the school; this importer does not invent or verify their truth.
+News may also include optional `cover` (image path/URL) and `slides` (paragraphs separated by `---`). If `slides` is blank, the viewer creates slides from `body`. Additional columns are preserved in generated JSON. Dates and URLs are supplied by the school; this importer does not invent or verify their truth.
 
 Example news row for format testing only (fictional, do not publish):
 
