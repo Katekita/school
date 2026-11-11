@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { newsItems } from '../data/mockData'
 import { useLanguage } from '../i18n/LanguageContext'
 import { readNewsSeen } from '../utils/newsSeen'
+import NewsEmptyState from './NewsEmptyState'
 
 let newsDetailPromise
 function preloadNewsDetail() {
@@ -71,7 +72,7 @@ export default function NewsStrip() {
     setDragging(false)
   }
 
-  if (!newsItems.length) return null
+  if (!newsItems.length) return <NewsEmptyState />
 
   return (
     <div className="news-strip-wrap">

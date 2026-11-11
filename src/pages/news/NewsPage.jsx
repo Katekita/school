@@ -5,6 +5,7 @@ import { events, newsItems } from '../../data/mockData'
 import { useLanguage } from '../../i18n/LanguageContext'
 import schoolData from '../../data/school'
 import NewsArchive from '../../components/NewsArchive'
+import NewsEmptyState from '../../components/NewsEmptyState'
 
 export default function NewsPage() {
   const { t } = useLanguage()
@@ -23,13 +24,7 @@ export default function NewsPage() {
             {newsItems.length ? (
               <NewsArchive />
             ) : (
-              <div className="empty-state news-empty-state">
-                <h3>{t('news.emptyTitle')}</h3>
-                <p>{t('news.emptyText')}</p>
-                <a className="text-link" href={schoolData.socialLinks[0].url} target="_blank" rel="noreferrer">
-                  {t('news.socialLink')} {schoolData.socialLinks[0].handle} <ArrowRight size={14} />
-                </a>
-              </div>
+              <NewsEmptyState />
             )}
           </section>
 
