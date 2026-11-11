@@ -15,6 +15,9 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import Reveal from '../../components/Reveal'
 import useSpotlight from '../../hooks/useSpotlight'
 import schoolData from '../../data/school'
+import DataNotice from '../../components/DataNotice'
+import NewsStrip from '../../components/NewsStrip'
+import { newsItems } from '../../data/mockData'
 
 const directions = [
   { key: 'school', icon: School, to: '/mektep' },
@@ -36,22 +39,12 @@ export default function HomePage() {
     target: heroRef,
     offset: ['start start', 'end start'],
   })
-  const imageY = useTransform(scrollYProgress, [0, 1], ['0%', reduce ? '0%' : '14%'])
   const copyY = useTransform(scrollYProgress, [0, 1], ['0%', reduce ? '0%' : '-8%'])
 
   return (
     <>
       <section className="home-hero" ref={heroRef}>
-        <motion.img
-          className="hero-image"
-          style={reduce ? undefined : { y: imageY }}
-          src="https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=2000&q=85"
-          srcSet="https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=640&q=75 640w, https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1280&q=80 1280w, https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=2000&q=85 2000w"
-          sizes="(max-width: 600px) 100vw, (max-width: 1080px) 50vw, 55vw"
-          alt={t('home.dir.school.title')}
-          fetchPriority="high"
-          decoding="async"
-        />
+        <div className="hero-image" aria-hidden="true" />
         <motion.div className="hero-content" style={reduce ? undefined : { y: copyY }}>
           <div className="hero-overline">
             <span /> {t('home.heroTagline')}
@@ -78,6 +71,7 @@ export default function HomePage() {
           </span>
         </div>
       </section>
+      <div className="page-container"><DataNotice /></div>
 
       <section className="quick-facts" aria-label={t('home.factsAria')}>
         <Reveal className="fact" delay={0}>
@@ -163,18 +157,14 @@ export default function HomePage() {
               {t('home.allNews')} <ArrowRight size={14} />
             </Link>
           </div>
-          <div className="placeholder-panel">
+          <NewsStrip />
+          {!newsItems.length && <div className="placeholder-panel">
             <strong>{t('home.newsEmpty')}</strong>
             <p>{t('home.newsEmptyText')}</p>
-            <a
-              className="text-link"
-              href={schoolData.socialLinks[0].url}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a className="text-link" href={schoolData.socialLinks[0].url} target="_blank" rel="noreferrer">
               {t('home.socialPage')} {schoolData.socialLinks[0].handle} <ExternalLink size={14} />
             </a>
-          </div>
+          </div>}
         </div>
       </section>
 

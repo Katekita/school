@@ -1,10 +1,10 @@
 import { ArrowRight, CalendarDays, MapPin } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import PageBanner from '../../components/PageBanner'
 import Reveal from '../../components/Reveal'
 import { events, newsItems } from '../../data/mockData'
 import { useLanguage } from '../../i18n/LanguageContext'
 import schoolData from '../../data/school'
+import NewsArchive from '../../components/NewsArchive'
 
 export default function NewsPage() {
   const { t } = useLanguage()
@@ -21,24 +21,7 @@ export default function NewsPage() {
               </div>
             </div>
             {newsItems.length ? (
-              <div className="news-grid">
-                {newsItems.map((item) => (
-                  <Reveal key={item.slug}>
-                    <article className="page-card">
-                      <span className="meta-chip">{item.category}</span>
-                      <div className="meta-row">
-                        <CalendarDays size={14} />{' '}
-                        {new Date(item.date).toLocaleDateString('ru-RU')}
-                      </div>
-                      <h3>{item.title}</h3>
-                      <p>{item.excerpt}</p>
-                      <Link className="text-link" to={`/news/${item.slug}`}>
-                        {t('news.readNews')} <ArrowRight size={14} />
-                      </Link>
-                    </article>
-                  </Reveal>
-                ))}
-              </div>
+              <NewsArchive />
             ) : (
               <div className="empty-state news-empty-state">
                 <h3>{t('news.emptyTitle')}</h3>

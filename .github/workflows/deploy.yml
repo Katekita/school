@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -27,6 +29,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Validate source
+        run: npm run check
       - name: Build site
         run: npm run build
         env:
@@ -34,6 +38,9 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_LOGIN_EMAIL_DOMAIN: ${{ vars.VITE_LOGIN_EMAIL_DOMAIN }}
+          SHEET_NEWS_URL: ${{ vars.SHEET_NEWS_URL }}
+          SHEET_EVENTS_URL: ${{ vars.SHEET_EVENTS_URL }}
+          SHEET_DOCS_URL: ${{ vars.SHEET_DOCS_URL }}
       # SPA fallback: Pages serves 404.html for unknown paths, so the router boots
       # on deep links like /school/news or /school/students/schedule.
       - name: Add SPA fallback

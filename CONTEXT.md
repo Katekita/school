@@ -533,6 +533,16 @@ node -e "import('./src/i18n/translations.js').then(m=>{const langs=['ky','ru','e
 
 Пример: `Add dark theme, command palette and live schedule tools`.
 
+## 19. Проверки Codex (11 ноября 2026)
+
+- Baseline после `npm ci`: lint завершился успешно с двумя предупреждениями Oxlint (AuthContext и AdminPage), build прошёл.
+- Проверка переводов baseline: ky=361, ru=361, en=361; расхождений нет.
+- `npm ci` сообщил о двух уязвимостях высокого уровня; зависимости автоматически не обновлялись.
+- Добавлены `npm run check:i18n`, `npm run check:schedule` и общий `npm run check`.
+- `schedule.js` в этой рабочей копии не содержит опубликованных классов или назначений; валидатор сообщает об этом как о намеренно пустом состоянии.
+- Контентные CSV-источники: `SHEET_NEWS_URL`, `SHEET_EVENTS_URL`, `SHEET_DOCS_URL`; схема описана в `docs/content-sheet.md`.
+- Билд предварительно обновляет `src/data/generated/*.json`; расписание GitHub Actions повторяет публикацию ежечасно.
+
 ---
 
 *Последнее обновление: 9 ноября 2026*

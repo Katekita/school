@@ -51,11 +51,9 @@ function BackToTop() {
 export default function PortalLayout() {
   const location = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
-
-  // Палитру грузим только при первом открытии — она не в стартовом бандле.
-  useEffect(() => {
-    if (paletteOpen) return
-  }, [paletteOpen])
+  const isNewsViewer = Boolean(location.state?.newsViewer)
+  const isReturningFromViewer = Boolean(location.state?.fromNewsViewer)
+  const pageKey = isNewsViewer ? '/news-viewer' : location.pathname
 
   return (
     <div className="site-shell">
@@ -64,12 +62,12 @@ export default function PortalLayout() {
         <Suspense fallback={<PageLoader />}>
           <AnimatePresence mode="wait">
             <motion.div
-              key={location.pathname}
+              key={pageKey}
               className="page-transition"
-              initial={{ opacity: 0, y: 12 }}
+              initial={isNewsViewer || isReturningFromViewer ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: isNewsViewer || isReturningFromViewer ? 0.16 : 0.32, ease: [0.22, 1, 0.36, 1] }}
             >
               <Outlet />
             </motion.div>
