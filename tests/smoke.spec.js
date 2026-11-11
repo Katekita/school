@@ -1,0 +1,87 @@
+import { test, expect } from '@playwright/test'
+
+const languages = ['ky', 'ru', 'en']
+const themes = ['light', 'dark']
+const widths = [375, 1280]
+
+async function stageBox(page) {
+  const stage = page.locator('.news-viewer-stage')
+  await expect(stage).toBeVisible()
+  let box
+  await expect.poll(async () => {
+    box = await stage.boundingBox()
+    return Boolean(box)
+  }).toBe(true)
+  return box
+}
+
+test('news strip and viewer render at requested widths, themes, and languages', async ({ browser }) => {
+  for (const language of languages) {
+    for (const theme of themes) {
+      for (const width of widths) {
+        const page = await browser.newPage({ viewport: { width, height: 900 } })
+        const errors = []
+        const externalRequests = []
+        page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
+        page.on('request', (request) => { if (!request.url().startsWith('http://127.0.0.1:5190/')) externalRequests.push(request.url()) })
+        await page.addInitScript(({ language, theme }) => {
+          localStorage.setItem('school68_language', language)
+          localStorage.setItem('school68_theme', theme)
+          localStorage.setItem('school68_news_seen', '{}')
+        }, { language, theme })
+        await page.goto('/?demo=1')
+        await expect(page.locator('html')).toHaveAttribute('lang', language)
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+        await expect(page.getByRole('link', { name: /Демонстрационная новость 1/ })).toBeVisible()
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+        await page.screenshot({ path: `test-results/news-qa/${language}-${theme}-${width}-home.png`, animations: 'disabled' })
+        await page.getByRole('link', { name: /Демонстрационная новость 1/ }).click()
+        await expect(page.getByRole('dialog')).toBeVisible()
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+        await page.screenshot({ path: `test-results/news-qa/${language}-${theme}-${width}-viewer.png`, animations: 'disabled' })
+        expect(errors, `${language}/${theme}/${width} console errors`).toEqual([])
+        expect(externalRequests, `${language}/${theme}/${width} external requests`).toEqual([])
+        await page.close()
+      }
+    }
+  }
+})
+
+test('touch swipes change stories and close the viewer; keyboard changes slides', async ({ browser }) => {
+  const page = await browser.newPage({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true })
+  await page.addInitScript(() => {
+    localStorage.setItem('school68_language', 'ru')
+    localStorage.setItem('school68_theme', 'light')
+    localStorage.setItem('school68_news_seen', '{}')
+  })
+  await page.goto('/?demo=1')
+  await page.getByRole('link', { name: /Демонстрационная новость 1/ }).tap()
+  await expect(page.getByRole('dialog', { name: /Демонстрационная новость 1/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Помощь' }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByRole('dialog').locator('[aria-live="polite"]')).toContainText('слайд 2')
+  const cdp = await page.context().newCDPSession(page)
+  const touchSwipe = async (from, to) => {
+    const stage = await stageBox(page)
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 1, x: stage.x + from.x, y: stage.y + from.y }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 1, x: stage.x + to.x, y: stage.y + to.y }] })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  }
+  const firstStage = await stageBox(page)
+  await touchSwipe({ x: firstStage.width - 50, y: firstStage.height / 2 }, { x: 50, y: firstStage.height / 2 })
+  await expect(page).toHaveURL(/demo-test-two/)
+  await expect(page.getByRole('dialog', { name: /Демонстрационная новость 2/ })).toBeVisible()
+  await expect(page.locator('.news-viewer-stage')).toBeVisible()
+  await touchSwipe({ x: 120, y: 80 }, { x: 120, y: 200 })
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(page).toHaveURL(/\/?demo=1$/)
+  await cdp.detach()
+  await page.close()
+})
+
+test('a direct news URL remains a regular article page', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
+  await page.goto('/news/demo-test-one?demo=1')
+  await expect(page.getByRole('heading', { name: /Демонстрационная новость 1/ })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
