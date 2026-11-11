@@ -32,24 +32,66 @@ function parseCsv(text) {
   }
 }
 
+async function fetchCsv(url, envName, required) {
+  const response = await fetch(url, { signal: AbortSignal.timeout(10000) })
+  if (!response.ok) throw new Error(`${envName}: HTTP ${response.status}`)
+  const { headers, records } = parseCsv(await response.text())
+  const fields = new Set(headers)
+  const missing = required.filter((key) => !fields.has(key))
+  if (missing.length) throw new Error(`${envName}: missing columns: ${missing.join(', ')}`)
+  return records
+    .filter((record) => required.every((key) => record[key]))
+    .map((record) => ({ ...record, published: record.published?.toLowerCase() !== 'false' }))
+}
+
+async function fetchSupabaseNews(url, key) {
+  const endpoint = new URL('/rest/v1/news', url)
+  endpoint.search = new URLSearchParams({
+    select: 'slug,title,body,published_at',
+    status: 'eq.published',
+    published_at: `lte.${new Date().toISOString()}`,
+    order: 'published_at.desc',
+  })
+  const response = await fetch(endpoint, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+    signal: AbortSignal.timeout(10000),
+  })
+  if (!response.ok) throw new Error(`Supabase news request failed: HTTP ${response.status}`)
+  const records = await response.json()
+  if (!Array.isArray(records)) throw new Error('Supabase news response must be an array')
+  return records
+    .filter((record) => record.slug && record.title && record.body && record.published_at)
+    .map((record) => ({
+      slug: record.slug,
+      title: record.title,
+      date: record.published_at,
+      summary: record.body.slice(0, 240),
+      body: record.body,
+      published: true,
+    }))
+}
+
 await mkdir(resolve('src/data/generated'), { recursive: true })
 for (const [name, envName, required] of sources) {
   let items = []
   const url = process.env[envName]
-  if (url) {
+  const output = resolve(`src/data/generated/${name}.json`)
+  if (name === 'news') {
+    if (url) {
+      items = await fetchCsv(url, envName, required)
+    } else if (process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY) {
+      items = await fetchSupabaseNews(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY)
+    } else {
+      console.warn(`${envName} and Supabase are not configured; preserving existing news`)
+      continue
+    }
+  } else if (url) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(10000) })
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      const { headers, records } = parseCsv(await response.text())
-      const fields = new Set(headers)
-      const missing = required.filter((key) => !fields.has(key))
-      if (missing.length) throw new Error(`missing columns: ${missing.join(', ')}`)
-      items = records.filter((record) => required.every((key) => record[key])).map((record) => ({ ...record, published: record.published?.toLowerCase() !== 'false' }))
+      items = await fetchCsv(url, envName, required)
     } catch (error) {
       console.warn(`${envName}: ${error.message}; publishing an empty list`)
     }
   }
-  const output = resolve(`src/data/generated/${name}.json`)
   await mkdir(dirname(output), { recursive: true })
   await writeFile(output, `${JSON.stringify(items, null, 2)}\n`)
   console.log(`${name}: ${items.length} published row(s)`)
