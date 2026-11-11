@@ -69,8 +69,8 @@ export default function NewsViewer({ article }) {
   const [isClosing, setIsClosing] = useState(false)
   const slides = useMemo(() => buildSlides(article), [article])
   const storyIndex = newsItems.findIndex((item) => item.slug === article.slug)
-  const previous = newsItems[storyIndex + 1]
-  const next = newsItems[storyIndex - 1]
+  const previous = newsItems[storyIndex - 1]
+  const next = newsItems[storyIndex + 1]
   const close = useCallback(() => {
     if (closingRef.current) return
     closingRef.current = true
@@ -168,7 +168,7 @@ export default function NewsViewer({ article }) {
     const dx = x - touchStart.current.x
     const dy = y - touchStart.current.y
     touchStart.current = null
-    if (Math.abs(dx) > 55) openStory(dx < 0 ? previous : next)
+    if (Math.abs(dx) > 55) openStory(dx < 0 ? next : previous)
     else if (dy > 70 && Math.abs(dy) > Math.abs(dx)) close()
   }
 

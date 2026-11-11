@@ -65,6 +65,11 @@ test('touch swipes change stories and close the viewer; keyboard changes slides'
   await page.getByRole('button', { name: 'Помощь' }).focus()
   await page.keyboard.press('ArrowLeft')
   await expect(page.getByRole('dialog').locator('[aria-live="polite"]')).toContainText('слайд 1')
+  await expect(page.getByRole('button', { name: 'Предыдущая новость' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Следующая новость' }).click()
+  await expect(page).toHaveURL(/demo-test-two/)
+  await page.getByRole('button', { name: 'Предыдущая новость' }).click()
+  await expect(page).toHaveURL(/demo-test-one/)
   const cdp = await page.context().newCDPSession(page)
   const touchSwipe = async (from, to) => {
     const stage = await stageBox(page)
@@ -128,7 +133,10 @@ test('viewer has a visible back action, restores scroll, and closes from the bac
 
 test('a direct news URL remains a regular article page', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
-  await page.goto('/news/demo-test-one?demo=1')
-  await expect(page.getByRole('heading', { name: /Демонстрационная новость 1/ })).toBeVisible()
+  await page.goto('/news/demo-test-two?demo=1')
+  await expect(page.getByRole('heading', { name: /Демонстрационная новость 2/ })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
+  const articleNavigation = page.locator('.news-article-nav')
+  await expect(articleNavigation.locator('a').nth(0)).toHaveAttribute('href', '/news/demo-test-one?demo=1')
+  await expect(articleNavigation.locator('a').nth(1)).toHaveAttribute('href', '/news/demo-test-three?demo=1')
 })

@@ -38,8 +38,8 @@ export default function NewsDetailPage() {
   if (location.state?.newsViewer) return <NewsViewer article={article} />
 
   const articleIndex = newsItems.findIndex((item) => item.slug === article.slug)
-  const previous = newsItems[articleIndex + 1]
-  const next = newsItems[articleIndex - 1]
+  const previous = newsItems[articleIndex - 1]
+  const next = newsItems[articleIndex + 1]
   const bodyParagraphs = String(article.content || '').split(/\s*---\s*|\n\s*\n/).map((text) => text.trim()).filter(Boolean)
   const date = Date.parse(article.date)
   const formatDate = (value) => {
