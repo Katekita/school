@@ -47,6 +47,31 @@ test('news strip and viewer render at requested widths, themes, and languages', 
   }
 })
 
+test('news archive filters stories by day and opens them in the viewer', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
+  await page.goto('/news?demo=1')
+
+  await expect(page.getByRole('link', { name: /Демонстрационная новость 1/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Демонстрационная новость 2/ })).toHaveCount(0)
+
+  const secondDay = page.locator('.news-archive-days button').filter({
+    has: page.locator('time[datetime="2026-11-10"]'),
+  })
+  await secondDay.click()
+  await expect(secondDay).toHaveAttribute('aria-pressed', 'true')
+  const secondStory = page.getByRole('link', { name: /Демонстрационная новость 2/ })
+  await expect(secondStory).toBeVisible()
+  await expect(page.getByRole('link', { name: /Демонстрационная новость 1/ })).toHaveCount(0)
+
+  for (const width of [320, 375, 768, 1280, 1536]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+  }
+
+  await secondStory.click()
+  await expect(page.getByRole('dialog', { name: /Демонстрационная новость 2/ })).toBeVisible()
+})
+
 test('touch swipes change stories and close the viewer; keyboard changes slides', async ({ browser }) => {
   const page = await browser.newPage({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true })
   await page.addInitScript(() => {

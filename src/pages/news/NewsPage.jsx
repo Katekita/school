@@ -4,7 +4,7 @@ import Reveal from '../../components/Reveal'
 import { events, newsItems } from '../../data/mockData'
 import { useLanguage } from '../../i18n/LanguageContext'
 import schoolData from '../../data/school'
-import NewsStrip from '../../components/NewsStrip'
+import NewsArchive from '../../components/NewsArchive'
 
 export default function NewsPage() {
   const { t } = useLanguage()
@@ -21,7 +21,7 @@ export default function NewsPage() {
               </div>
             </div>
             {newsItems.length ? (
-              <NewsStrip />
+              <NewsArchive />
             ) : (
               <div className="empty-state news-empty-state">
                 <h3>{t('news.emptyTitle')}</h3>
