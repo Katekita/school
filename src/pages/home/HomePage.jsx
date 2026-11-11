@@ -16,6 +16,8 @@ import Reveal from '../../components/Reveal'
 import useSpotlight from '../../hooks/useSpotlight'
 import schoolData from '../../data/school'
 import DataNotice from '../../components/DataNotice'
+import NewsStrip from '../../components/NewsStrip'
+import { newsItems } from '../../data/mockData'
 
 const directions = [
   { key: 'school', icon: School, to: '/mektep' },
@@ -155,18 +157,14 @@ export default function HomePage() {
               {t('home.allNews')} <ArrowRight size={14} />
             </Link>
           </div>
-          <div className="placeholder-panel">
+          <NewsStrip />
+          {!newsItems.length && <div className="placeholder-panel">
             <strong>{t('home.newsEmpty')}</strong>
             <p>{t('home.newsEmptyText')}</p>
-            <a
-              className="text-link"
-              href={schoolData.socialLinks[0].url}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a className="text-link" href={schoolData.socialLinks[0].url} target="_blank" rel="noreferrer">
               {t('home.socialPage')} {schoolData.socialLinks[0].handle} <ExternalLink size={14} />
             </a>
-          </div>
+          </div>}
         </div>
       </section>
 
