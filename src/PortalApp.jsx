@@ -111,11 +111,18 @@ function findHashTarget(hash) {
 }
 
 function ScrollManager() {
-  const { pathname, hash } = useLocation()
+  const { pathname, hash, state } = useLocation()
 
   useEffect(() => {
+    if (!hash) {
+      if (Number.isFinite(state?.restoreScrollY)) {
+        const frame = requestAnimationFrame(() => window.scrollTo(0, state.restoreScrollY))
+        return () => cancelAnimationFrame(frame)
+      }
+      window.scrollTo(0, 0)
+      return
+    }
     window.scrollTo(0, 0)
-    if (!hash) return
     let timer = 0
     let tries = 0
     const look = () => {
@@ -128,7 +135,7 @@ function ScrollManager() {
     }
     timer = setTimeout(look, 60)
     return () => clearTimeout(timer)
-  }, [pathname, hash])
+  }, [pathname, hash, state?.restoreScrollY])
 
   return null
 }

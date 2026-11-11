@@ -35,7 +35,7 @@ export default function NewsDetailPage() {
     )
   }
 
-  if (location.state?.newsViewer) return <NewsViewer key={slug} article={article} />
+  if (location.state?.newsViewer) return <NewsViewer article={article} />
 
   const articleIndex = newsItems.findIndex((item) => item.slug === article.slug)
   const previous = newsItems[articleIndex + 1]

@@ -55,6 +55,8 @@ function buildSlides(article) {
 export default function NewsViewer({ article }) {
   const dialogRef = useRef(null)
   const touchStart = useRef(null)
+  const closeTimer = useRef(null)
+  const closingRef = useRef(false)
   const pauseReasons = useRef({ hover: false, focus: false, hold: false })
   const navigate = useNavigate()
   const location = useLocation()
@@ -65,18 +67,41 @@ export default function NewsViewer({ article }) {
   const [autoAdvance, setAutoAdvance] = useState(false)
   const [paused, setPaused] = useState(false)
   const [reduce, setReduce] = useState(reducedMotion)
+  const [isClosing, setIsClosing] = useState(false)
   const slides = useMemo(() => buildSlides(article), [article])
   const storyIndex = newsItems.findIndex((item) => item.slug === article.slug)
   const previous = newsItems[storyIndex + 1]
   const next = newsItems[storyIndex - 1]
   const close = useCallback(() => {
-    dialogRef.current?.close()
-    navigate(returnTo, { replace: true })
-  }, [navigate, returnTo])
+    if (closingRef.current) return
+    closingRef.current = true
+    const finish = () => {
+      dialogRef.current?.close()
+      navigate(returnTo, {
+        replace: true,
+        state: {
+          restoreScrollY: location.state?.returnScrollY ?? 0,
+          restoreStripIndex: location.state?.returnStripIndex ?? 0,
+        },
+      })
+    }
+    if (reduce) { finish(); return }
+    setIsClosing(true)
+    closeTimer.current = window.setTimeout(finish, 170)
+  }, [location.state?.returnScrollY, location.state?.returnStripIndex, navigate, reduce, returnTo])
   const openStory = useCallback((item) => {
     if (!item) return
-    navigate({ pathname: `/news/${item.slug}`, search: location.search }, { state: { newsViewer: true, returnTo } })
-  }, [location.search, navigate, returnTo])
+    setSlideIndex(0)
+    setHelpOpen(false)
+    navigate({ pathname: `/news/${item.slug}`, search: location.search }, {
+      state: {
+        newsViewer: true,
+        returnTo,
+        returnScrollY: location.state?.returnScrollY,
+        returnStripIndex: location.state?.returnStripIndex,
+      },
+    })
+  }, [location.search, location.state?.returnScrollY, location.state?.returnStripIndex, navigate, returnTo])
   const changeSlide = useCallback((direction) => {
     setSlideIndex((value) => Math.max(0, Math.min(slides.length - 1, value + direction)))
   }, [slides.length])
@@ -102,10 +127,12 @@ export default function NewsViewer({ article }) {
     const dialog = dialogRef.current
     if (dialog && !dialog.open) {
       dialog.showModal()
-      dialog.querySelector('button')?.focus()
+      dialog.focus({ preventScroll: true })
     }
     markNewsSeen(article.slug)
   }, [article.slug])
+
+  useEffect(() => () => window.clearTimeout(closeTimer.current), [])
 
   useEffect(() => {
     if (!next?.cover || typeof window === 'undefined') return
@@ -122,6 +149,11 @@ export default function NewsViewer({ article }) {
   function setPauseReason(reason, value) {
     pauseReasons.current[reason] = value
     setPaused(Object.values(pauseReasons.current).some(Boolean))
+  }
+
+  function isInteractiveFocus(target) {
+    if (!target?.closest || target.closest('.news-viewer-stage')) return false
+    return Boolean(target.closest('button, input, select, textarea, a, [tabindex="0"]'))
   }
 
   useEffect(() => {
@@ -156,16 +188,18 @@ export default function NewsViewer({ article }) {
   return (
     <dialog
       ref={dialogRef}
-      className="news-viewer"
+      className={`news-viewer${isClosing ? ' is-closing' : ''}`}
       aria-label={article.title}
+      tabIndex={-1}
       onCancel={(event) => { event.preventDefault(); close() }}
+      onClick={(event) => { if (event.target === event.currentTarget) close() }}
       onPointerEnter={() => setPauseReason('hover', true)}
       onPointerLeave={() => setPauseReason('hover', false)}
       onPointerDown={() => setPauseReason('hold', true)}
       onPointerUpCapture={() => setPauseReason('hold', false)}
       onPointerCancel={() => setPauseReason('hold', false)}
-      onFocusCapture={() => setPauseReason('focus', true)}
-      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setPauseReason('focus', false) }}
+      onFocusCapture={(event) => setPauseReason('focus', isInteractiveFocus(event.target))}
+      onBlurCapture={(event) => setPauseReason('focus', isInteractiveFocus(event.relatedTarget))}
     >
       <div className="news-viewer-progress" aria-hidden="true">
         {slides.map((_, index) => <span key={index} className={index <= slideIndex ? 'is-done' : ''}><i /></span>)}
@@ -173,9 +207,9 @@ export default function NewsViewer({ article }) {
       <header className="news-viewer-toolbar">
         <button type="button" aria-label={t('news.viewerHelp')} onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={21} /></button>
         <span aria-live="polite" aria-atomic="true">{numberText}</span>
-        <button type="button" aria-label={t('news.closeViewer')} onClick={close}><X size={22} /></button>
+        <button type="button" className="news-viewer-close" aria-label={t('news.closeViewer')} onClick={close}><X size={19} /><span>{t('news.exitViewer')}</span></button>
       </header>
-      <div className="news-viewer-stage" onPointerDown={(event) => { touchStart.current = { x: event.clientX, y: event.clientY } }} onPointerUp={onPointerUp} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} onClick={(event) => {
+      <div className="news-viewer-stage" tabIndex={0} aria-label={t('news.viewerSlideArea')} onPointerDown={(event) => { touchStart.current = { x: event.clientX, y: event.clientY } }} onPointerUp={onPointerUp} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} onClick={(event) => {
         if (event.target.closest('button, a, input, summary, details')) return
         const rect = event.currentTarget.getBoundingClientRect()
         if (event.clientX < rect.left + rect.width / 3) changeSlide(-1)
@@ -197,12 +231,12 @@ export default function NewsViewer({ article }) {
         <button type="button" className="news-viewer-side news-viewer-side-next" aria-label={t('news.next')} onClick={() => changeSlide(1)}><ArrowRight size={22} /></button>
       </div>
       <footer className="news-viewer-footer">
-        <button type="button" aria-label={t('news.previousNews')} disabled={!previous} onClick={() => openStory(previous)}><ArrowLeft size={18} /></button>
+        <button type="button" className="news-story-control" aria-label={t('news.previousNews')} disabled={!previous} onClick={() => openStory(previous)}><ArrowLeft size={18} /><span>{t('news.previousNews')}</span></button>
         <label className={reduce ? 'is-disabled' : ''}>
           <input type="checkbox" checked={autoAdvance && !reduce} disabled={reduce} onChange={(event) => setAutoAdvance(event.target.checked)} />
           {t('news.autoplay')}
         </label>
-        <button type="button" aria-label={t('news.nextNews')} disabled={!next} onClick={() => openStory(next)}><ArrowRight size={18} /></button>
+        <button type="button" className="news-story-control" aria-label={t('news.nextNews')} disabled={!next} onClick={() => openStory(next)}><span>{t('news.nextNews')}</span><ArrowRight size={18} /></button>
       </footer>
       {helpOpen && <aside className="news-viewer-help" role="status"><p>{t('news.helpInstructions')}</p></aside>}
     </dialog>

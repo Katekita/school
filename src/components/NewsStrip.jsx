@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, CalendarDays } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { newsItems } from '../data/mockData'
@@ -11,9 +11,16 @@ export default function NewsStrip() {
   const stripRef = useRef(null)
   const drag = useRef(null)
   const suppressClick = useRef(false)
-  const [position, setPosition] = useState(0)
+  const [position, setPosition] = useState(location.state?.restoreStripIndex ?? 0)
   const [dragging, setDragging] = useState(false)
   const seen = readNewsSeen()
+
+  useEffect(() => {
+    const strip = stripRef.current
+    const card = strip?.querySelector('.news-strip-card')
+    if (!strip || !card || !location.state?.restoreStripIndex) return
+    strip.scrollLeft = location.state.restoreStripIndex * (card.offsetWidth + 16)
+  }, [location.state?.restoreStripIndex])
 
   function scroll(direction) {
     const strip = stripRef.current
@@ -74,7 +81,12 @@ export default function NewsStrip() {
               key={item.slug}
               className={`news-strip-card${!seen[item.slug] ? ' is-unread' : ''}`}
               to={{ pathname: `/news/${item.slug}`, search: location.search }}
-              state={{ newsViewer: true, returnTo: `${location.pathname}${location.search}` }}
+              state={{
+                newsViewer: true,
+                returnTo: `${location.pathname}${location.search}`,
+                returnScrollY: window.scrollY,
+                returnStripIndex: position,
+              }}
               onClick={(event) => { if (suppressClick.current) { event.preventDefault(); suppressClick.current = false } }}
             >
               {item.cover ? <img src={item.cover} alt="" loading="lazy" /> : <span className="news-strip-cover" aria-hidden="true" />}

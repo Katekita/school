@@ -79,6 +79,31 @@ test('touch swipes change stories and close the viewer; keyboard changes slides'
   await page.close()
 })
 
+test('viewer has a visible back action, restores scroll, and closes from the backdrop', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('school68_language', 'ru')
+    localStorage.setItem('school68_theme', 'light')
+    localStorage.setItem('school68_news_seen', '{}')
+  })
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/?demo=1')
+  const card = page.getByRole('link', { name: /Демонстрационная новость 1/ })
+  await card.scrollIntoViewIfNeeded()
+  const returnScrollY = await page.evaluate(() => window.scrollY)
+  await card.click()
+  await expect(page.getByRole('dialog', { name: /Демонстрационная новость 1/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Закрыть просмотр' })).toContainText('Назад')
+  await page.getByRole('button', { name: 'Закрыть просмотр' }).click()
+  await expect(page).toHaveURL(/\/?demo=1$/)
+  await expect.poll(async () => Math.abs((await page.evaluate(() => window.scrollY)) - returnScrollY)).toBeLessThan(3)
+
+  await page.getByRole('link', { name: /Демонстрационная новость 1/ }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.mouse.click(5, 5)
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(page).toHaveURL(/\/?demo=1$/)
+})
+
 test('a direct news URL remains a regular article page', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
   await page.goto('/news/demo-test-one?demo=1')
