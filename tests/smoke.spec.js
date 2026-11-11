@@ -51,17 +51,18 @@ test('news archive filters stories by day and opens them in the viewer', async (
   await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
   await page.goto('/news?demo=1')
 
-  await expect(page.getByRole('link', { name: /Демонстрационная новость 1/ })).toBeVisible()
-  await expect(page.getByRole('link', { name: /Демонстрационная новость 2/ })).toHaveCount(0)
+  const archive = page.locator('.news-archive-grid')
+  await expect(archive.getByRole('link', { name: /Демонстрационная новость 1/ })).toBeVisible()
+  await expect(archive.getByRole('link', { name: /Демонстрационная новость 2/ })).toHaveCount(0)
 
   const secondDay = page.locator('.news-archive-days button').filter({
     has: page.locator('time[datetime="2026-11-10"]'),
   })
   await secondDay.click()
   await expect(secondDay).toHaveAttribute('aria-pressed', 'true')
-  const secondStory = page.getByRole('link', { name: /Демонстрационная новость 2/ })
+  const secondStory = archive.getByRole('link', { name: /Демонстрационная новость 2/ })
   await expect(secondStory).toBeVisible()
-  await expect(page.getByRole('link', { name: /Демонстрационная новость 1/ })).toHaveCount(0)
+  await expect(archive.getByRole('link', { name: /Демонстрационная новость 1/ })).toHaveCount(0)
 
   for (const width of [320, 375, 768, 1280, 1536]) {
     await page.setViewportSize({ width, height: 900 })
@@ -70,6 +71,18 @@ test('news archive filters stories by day and opens them in the viewer', async (
 
   await secondStory.click()
   await expect(page.getByRole('dialog', { name: /Демонстрационная новость 2/ })).toBeVisible()
+})
+
+test('news page has both the horizontal strip and the day archive', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
+  await page.goto('/news?demo=1')
+
+  const strip = page.locator('.news-strip')
+  await expect(strip.getByRole('link', { name: /Демонстрационная новость 1/ })).toBeVisible()
+  await expect(page.locator('.news-archive')).toBeVisible()
+  await strip.getByRole('link', { name: /Демонстрационная новость 1/ }).click()
+  await expect(page.getByRole('dialog', { name: /Демонстрационная новость 1/ })).toBeVisible()
+  await expect(page).toHaveURL(/\/news\/demo-test-one\?demo=1$/)
 })
 
 test('empty news displays a clearly labelled placeholder on home and archive pages', async ({ page }) => {

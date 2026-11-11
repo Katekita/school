@@ -5,7 +5,7 @@ import { events, newsItems } from '../../data/mockData'
 import { useLanguage } from '../../i18n/LanguageContext'
 import schoolData from '../../data/school'
 import NewsArchive from '../../components/NewsArchive'
-import NewsEmptyState from '../../components/NewsEmptyState'
+import NewsStrip from '../../components/NewsStrip'
 
 export default function NewsPage() {
   const { t } = useLanguage()
@@ -21,11 +21,8 @@ export default function NewsPage() {
                 <h2 id="news-heading" className="section-title">{t('news.sectionTitle')}</h2>
               </div>
             </div>
-            {newsItems.length ? (
-              <NewsArchive />
-            ) : (
-              <NewsEmptyState />
-            )}
+            <NewsStrip />
+            {newsItems.length > 0 && <NewsArchive />}
           </section>
 
           <section className="news-group events-group" id="events" aria-labelledby="events-heading">
