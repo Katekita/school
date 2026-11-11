@@ -3,7 +3,6 @@ import { ArrowLeft, ArrowRight, HelpCircle, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { newsItems } from '../data/mockData'
 import { useLanguage } from '../i18n/LanguageContext'
-import { markNewsSeen } from '../utils/newsSeen'
 
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -82,6 +81,7 @@ export default function NewsViewer({ article }) {
         state: {
           restoreScrollY: location.state?.returnScrollY ?? 0,
           restoreStripIndex: location.state?.returnStripIndex ?? 0,
+          fromNewsViewer: true,
         },
       })
     }
@@ -129,7 +129,6 @@ export default function NewsViewer({ article }) {
       dialog.showModal()
       dialog.focus({ preventScroll: true })
     }
-    markNewsSeen(article.slug)
   }, [article.slug])
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), [])
@@ -137,6 +136,8 @@ export default function NewsViewer({ article }) {
   useEffect(() => {
     if (!next?.cover || typeof window === 'undefined') return
     const image = new Image()
+    image.decoding = 'async'
+    image.fetchPriority = 'low'
     image.src = next.cover
   }, [next?.cover])
 
@@ -201,9 +202,13 @@ export default function NewsViewer({ article }) {
       onFocusCapture={(event) => setPauseReason('focus', isInteractiveFocus(event.target))}
       onBlurCapture={(event) => setPauseReason('focus', isInteractiveFocus(event.relatedTarget))}
     >
-      <div className="news-viewer-progress" aria-hidden="true">
-        {slides.map((_, index) => <span key={index} className={index <= slideIndex ? 'is-done' : ''}><i /></span>)}
-      </div>
+      <nav className="news-viewer-progress" aria-label={t('news.slidePosition')}>
+        {slides.map((_, index) => (
+          <button key={index} type="button" aria-label={`${t('news.jumpToSlide')} ${index + 1}`} aria-current={index === slideIndex ? 'step' : undefined} onClick={() => setSlideIndex(index)}>
+            <i className={index <= slideIndex ? 'is-done' : ''} />
+          </button>
+        ))}
+      </nav>
       <header className="news-viewer-toolbar">
         <button type="button" aria-label={t('news.viewerHelp')} onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={21} /></button>
         <span aria-live="polite" aria-atomic="true">{numberText}</span>

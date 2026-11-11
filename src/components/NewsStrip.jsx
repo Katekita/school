@@ -5,15 +5,24 @@ import { newsItems } from '../data/mockData'
 import { useLanguage } from '../i18n/LanguageContext'
 import { readNewsSeen } from '../utils/newsSeen'
 
+let newsDetailPromise
+function preloadNewsDetail() {
+  if (!newsDetailPromise) newsDetailPromise = import('../pages/news/NewsDetailPage')
+  return newsDetailPromise
+}
+
 export default function NewsStrip() {
   const { t, lang } = useLanguage()
   const location = useLocation()
   const stripRef = useRef(null)
   const drag = useRef(null)
   const suppressClick = useRef(false)
+  const scrollFrame = useRef(0)
   const [position, setPosition] = useState(location.state?.restoreStripIndex ?? 0)
   const [dragging, setDragging] = useState(false)
-  const seen = readNewsSeen()
+  const [seen] = useState(readNewsSeen)
+
+  useEffect(() => () => cancelAnimationFrame(scrollFrame.current), [])
 
   useEffect(() => {
     const strip = stripRef.current
@@ -30,10 +39,16 @@ export default function NewsStrip() {
   }
 
   function updatePosition() {
-    const strip = stripRef.current
-    if (!strip) return
-    const card = strip.querySelector('.news-strip-card')
-    if (card) setPosition(Math.round(strip.scrollLeft / (card.offsetWidth + 16)))
+    if (scrollFrame.current) return
+    scrollFrame.current = requestAnimationFrame(() => {
+      scrollFrame.current = 0
+      const strip = stripRef.current
+      if (!strip) return
+      const card = strip.querySelector('.news-strip-card')
+      if (!card) return
+      const nextPosition = Math.round(strip.scrollLeft / (card.offsetWidth + 16))
+      setPosition((current) => current === nextPosition ? current : nextPosition)
+    })
   }
 
   function pointerDown(event) {
@@ -88,6 +103,8 @@ export default function NewsStrip() {
                 returnStripIndex: position,
               }}
               onClick={(event) => { if (suppressClick.current) { event.preventDefault(); suppressClick.current = false } }}
+              onPointerEnter={() => { void preloadNewsDetail().catch(() => {}) }}
+              onFocus={() => { void preloadNewsDetail().catch(() => {}) }}
             >
               {item.cover ? <img src={item.cover} alt="" loading="lazy" /> : <span className="news-strip-cover" aria-hidden="true" />}
               <span className="news-strip-copy">

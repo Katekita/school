@@ -57,9 +57,14 @@ test('touch swipes change stories and close the viewer; keyboard changes slides'
   await page.goto('/?demo=1')
   await page.getByRole('link', { name: /Демонстрационная новость 1/ }).tap()
   await expect(page.getByRole('dialog', { name: /Демонстрационная новость 1/ })).toBeVisible()
+  const dialog = page.getByRole('dialog')
+  await page.getByRole('button', { name: 'Перейти к слайду 2' }).click()
+  await expect(dialog.locator('[aria-live="polite"]')).toContainText('слайд 2')
+  await expect(page.getByRole('dialog')).toHaveCount(1)
+  await expect(page.locator('.page-loader')).toHaveCount(0)
   await page.getByRole('button', { name: 'Помощь' }).focus()
-  await page.keyboard.press('ArrowRight')
-  await expect(page.getByRole('dialog').locator('[aria-live="polite"]')).toContainText('слайд 2')
+  await page.keyboard.press('ArrowLeft')
+  await expect(page.getByRole('dialog').locator('[aria-live="polite"]')).toContainText('слайд 1')
   const cdp = await page.context().newCDPSession(page)
   const touchSwipe = async (from, to) => {
     const stage = await stageBox(page)
@@ -77,6 +82,23 @@ test('touch swipes change stories and close the viewer; keyboard changes slides'
   await expect(page).toHaveURL(/\/?demo=1$/)
   await cdp.detach()
   await page.close()
+})
+
+test('news viewer fits compact phones, tablets, and wide desktops', async ({ browser }) => {
+  for (const width of [320, 375, 768, 1024, 1280, 1536]) {
+    const page = await browser.newPage({ viewport: { width, height: 900 } })
+    await page.addInitScript(() => {
+      localStorage.setItem('school68_language', 'ru')
+      localStorage.setItem('school68_theme', 'dark')
+      localStorage.setItem('school68_news_seen', '{}')
+    })
+    await page.goto('/?demo=1')
+    await page.getByRole('link', { name: /Демонстрационная новость 1/ }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    await page.screenshot({ path: `test-results/news-qa/responsive-${width}.png`, animations: 'disabled' })
+    await page.close()
+  }
 })
 
 test('viewer has a visible back action, restores scroll, and closes from the backdrop', async ({ page }) => {

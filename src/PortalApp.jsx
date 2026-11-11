@@ -114,6 +114,7 @@ function ScrollManager() {
   const { pathname, hash, state } = useLocation()
 
   useEffect(() => {
+    if (state?.newsViewer) return
     if (!hash) {
       if (Number.isFinite(state?.restoreScrollY)) {
         const frame = requestAnimationFrame(() => window.scrollTo(0, state.restoreScrollY))
@@ -135,7 +136,7 @@ function ScrollManager() {
     }
     timer = setTimeout(look, 60)
     return () => clearTimeout(timer)
-  }, [pathname, hash, state?.restoreScrollY])
+  }, [pathname, hash, state?.newsViewer, state?.restoreScrollY])
 
   return null
 }
