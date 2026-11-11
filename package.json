@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/fetch-content.mjs && vite build",
     "lint": "oxlint",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:schedule": "node scripts/check-schedule.mjs",
