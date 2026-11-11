@@ -51,6 +51,23 @@ function buildSlides(article) {
   ]
 }
 
+function getArticleImages(article) {
+  const images = new Set()
+  if (article.cover) images.add(article.cover)
+
+  const articleText = [
+    ...(Array.isArray(article.slides) ? article.slides : [article.slides]),
+    article.content,
+  ].filter(Boolean).join('\n')
+  for (const match of articleText.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)) images.add(match[1])
+
+  for (const image of Array.isArray(article.images) ? article.images : []) {
+    const src = typeof image === 'string' ? image : image?.src
+    if (src) images.add(src)
+  }
+  return [...images]
+}
+
 export default function NewsViewer({ article }) {
   const dialogRef = useRef(null)
   const touchStart = useRef(null)
@@ -71,6 +88,7 @@ export default function NewsViewer({ article }) {
   const storyIndex = newsItems.findIndex((item) => item.slug === article.slug)
   const previous = newsItems[storyIndex - 1]
   const next = newsItems[storyIndex + 1]
+  const nextImages = useMemo(() => next ? getArticleImages(next) : [], [next])
   const close = useCallback(() => {
     if (closingRef.current) return
     closingRef.current = true
@@ -134,12 +152,14 @@ export default function NewsViewer({ article }) {
   useEffect(() => () => window.clearTimeout(closeTimer.current), [])
 
   useEffect(() => {
-    if (!next?.cover || typeof window === 'undefined') return
-    const image = new Image()
-    image.decoding = 'async'
-    image.fetchPriority = 'low'
-    image.src = next.cover
-  }, [next?.cover])
+    if (typeof window === 'undefined') return
+    for (const src of nextImages) {
+      const image = new Image()
+      image.decoding = 'async'
+      image.fetchPriority = 'low'
+      image.src = src
+    }
+  }, [nextImages])
 
   useEffect(() => {
     if (!autoAdvance || paused || reduce || slides.length < 2) return undefined
