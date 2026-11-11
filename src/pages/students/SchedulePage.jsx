@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase'
 import useNow from '../../hooks/useNow'
 import { lessonTimes, scheduleYear, subjectName, weekDays } from '../../data/schedule'
 import { readSavedClass, saveClass } from '../../utils/classStorage'
+import DataNotice from '../../components/DataNotice'
 
 const weekdayNumber = Object.fromEntries(weekDays.map((day, index) => [day.id, index + 1]))
 const dayIds = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
@@ -235,6 +236,7 @@ export default function SchedulePage() {
       <PageBanner title={t('schedule.title')} eyebrow={t('schedule.eyebrow')} />
       <section className="content-section">
         <div className="page-container">
+          <DataNotice />
           <Reveal>
             <div className="schedule-intro">
               <div className="schedule-intro-copy">

@@ -19,7 +19,6 @@ const AlykulPage = lazy(() => import('./pages/about/AlykulPage'))
 const LeadershipPage = lazy(() => import('./pages/leadership/LeadershipPage'))
 const TeachersPage = lazy(() => import('./pages/teachers/TeachersPage'))
 const AdmissionsPage = lazy(() => import('./pages/admissions/AdmissionsPage'))
-const AdmissionPage = lazy(() => import('./pages/admissions/AdmissionPage'))
 const ParentsPage = lazy(() => import('./pages/parents/ParentsPage'))
 const StudentsPage = lazy(() => import('./pages/students/StudentsPage'))
 const LocationPage = lazy(() => import('./pages/location/LocationPage'))
@@ -31,7 +30,6 @@ const SchedulePage = lazy(() => import('./pages/students/SchedulePage'))
 const SearchPage = lazy(() => import('./pages/search/SearchPage'))
 const HistoryPage = lazy(() => import('./pages/about/HistoryPage'))
 const FaqPage = lazy(() => import('./pages/faq/FaqPage'))
-const AdminPage = lazy(() => import('./pages/admin/AdminPage'))
 const NotFoundPage = lazy(() => import('./pages/not-found/NotFoundPage'))
 
 // Заголовок и описание раздела: title и description меняются вместе с маршрутом.
@@ -43,7 +41,6 @@ const pageKeys = {
   '/jetekchilik': { title: 'leadership.title', desc: 'meta.leadership' },
   '/mugalimder': { title: 'teachers.title', desc: 'meta.teachers' },
   '/kabyl-aluu': { title: 'admissions.title', desc: 'meta.admissions' },
-  '/admission': { title: 'admission.title', desc: 'meta.admissions' },
   '/parents': { title: 'parents.title', desc: 'meta.parents' },
   '/students': { title: 'students.title', desc: 'meta.students' },
   '/students/schedule': { title: 'schedule.title', desc: 'meta.schedule' },
@@ -53,7 +50,6 @@ const pageKeys = {
   '/documents': { title: 'documents.title', desc: 'meta.documents' },
   '/search': { title: 'search.title', desc: 'meta.search' },
   '/faq': { title: 'faq.title', desc: 'meta.faq' },
-  '/admin': { title: 'admin.title', desc: 'meta.admin' },
 }
 
 function setMeta(attr, name, content) {
@@ -174,7 +170,7 @@ export default function PortalApp() {
                     <Route path="/jetekchilik" element={<LeadershipPage />} />
                     <Route path="/mugalimder" element={<TeachersPage />} />
                     <Route path="/kabyl-aluu" element={<AdmissionsPage />} />
-                    <Route path="/admission" element={<AdmissionPage />} />
+                    <Route path="/admission" element={<Navigate to="/kabyl-aluu" replace />} />
                     <Route path="/parents" element={<ParentsPage />} />
                     <Route path="/students" element={<RequireAuth roles={['student','teacher','admin']}><StudentsPage /></RequireAuth>} />
                     <Route path="/students/schedule" element={<RequireAuth roles={['student','teacher','admin']}><SchedulePage /></RequireAuth>} />
@@ -186,7 +182,6 @@ export default function PortalApp() {
                     <Route path="/documents" element={<DocumentsPage />} />
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/faq" element={<FaqPage />} />
-                    <Route path="/admin" element={<RequireAuth roles={['admin']}><AdminPage /></RequireAuth>} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Suspense>

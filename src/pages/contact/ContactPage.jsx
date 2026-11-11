@@ -3,6 +3,7 @@ import PageBanner from '../../components/PageBanner'
 import Reveal from '../../components/Reveal'
 import { useLanguage } from '../../i18n/LanguageContext'
 import schoolData from '../../data/school'
+import DataNotice from '../../components/DataNotice'
 
 export default function ContactPage() {
   const { t } = useLanguage()
@@ -14,6 +15,7 @@ export default function ContactPage() {
       <PageBanner title={t('contact.title')} eyebrow={t('contact.eyebrow')} />
       <section className="content-section">
         <div className="page-container">
+          <DataNotice />
           <div className="section-heading-row">
             <div>
               <p className="eyebrow">{t('contact.infoEyebrow')}</p>
