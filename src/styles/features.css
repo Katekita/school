@@ -301,16 +301,27 @@
 
 @media (min-width: 680px) {
   .home-shortcut-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .home-stats-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 1150px) {
+@media (min-width: 900px) {
   .home-shortcut-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .home-shortcut-link {
+    min-height: 76px;
+    gap: 14px;
+    padding: 16px 18px;
+    font-size: 15px;
+  }
+  .home-shortcut-link > svg:first-child {
+    width: 22px;
+    height: 22px;
   }
 }
 
