@@ -1,5 +1,7 @@
 import { useLanguage } from '../i18n/LanguageContext'
-import schoolData from '../data/school'
+import { getSchoolInfo } from '../services'
+
+const schoolData = getSchoolInfo()
 
 export default function DataNotice() {
   const { t } = useLanguage()

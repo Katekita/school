@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, CalendarDays } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
-import { newsItems } from '../data/mockData'
+import { getNews } from '../services'
 import { useLanguage } from '../i18n/LanguageContext'
 import { readNewsSeen } from '../utils/newsSeen'
 import NewsEmptyState from './NewsEmptyState'
+
+const newsItems = getNews()
 
 let newsDetailPromise
 function preloadNewsDetail() {

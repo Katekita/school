@@ -1,5 +1,6 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { MotionConfig } from 'motion/react'
 import { LanguageProvider, useLanguage } from './i18n/LanguageContext'
 import PortalLayout from './layouts/PortalLayout'
 import HomePage from './pages/home/HomePage'
@@ -12,6 +13,10 @@ import AccountPage from './pages/auth/AccountPage'
 import ChangePasswordPage from './pages/auth/ChangePasswordPage'
 import { Link } from 'react-router-dom'
 import PageBanner from './components/PageBanner'
+import {
+  ACCESSIBILITY_SETTINGS_EVENT,
+  readAccessibilitySettings,
+} from './utils/accessibilitySettings'
 
 // Лениво грузим остальные страницы — уменьшает стартовый бандл.
 const AboutPage = lazy(() => import('./pages/about/AboutPage'))
@@ -31,6 +36,7 @@ const SearchPage = lazy(() => import('./pages/search/SearchPage'))
 const HistoryPage = lazy(() => import('./pages/about/HistoryPage'))
 const FaqPage = lazy(() => import('./pages/faq/FaqPage'))
 const NotFoundPage = lazy(() => import('./pages/not-found/NotFoundPage'))
+const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
 
 // Заголовок и описание раздела: title и description меняются вместе с маршрутом.
 const pageKeys = {
@@ -46,10 +52,32 @@ const pageKeys = {
   '/students/schedule': { title: 'schedule.title', desc: 'meta.schedule' },
   '/dariek': { title: 'location.title', desc: 'meta.location' },
   '/baylanysh': { title: 'contact.title', desc: 'meta.contact' },
-  '/news': { title: 'news.title', desc: 'meta.news' },
+  '/news': { title: 'news.seoTitle', desc: 'meta.news' },
   '/documents': { title: 'documents.title', desc: 'meta.documents' },
   '/search': { title: 'search.title', desc: 'meta.search' },
   '/faq': { title: 'faq.title', desc: 'meta.faq' },
+  '/settings': { title: 'settings.title', desc: 'meta.settings' },
+}
+
+function MotionPreferences({ children }) {
+  const [reduceMotion, setReduceMotion] = useState(() => readAccessibilitySettings().reduceMotion)
+
+  useEffect(() => {
+    const sync = (event) => {
+      setReduceMotion(event.detail?.reduceMotion ?? readAccessibilitySettings().reduceMotion)
+    }
+    const onStorage = (event) => {
+      if (event.key === 'school68_reduce_motion') setReduceMotion(event.newValue === 'true')
+    }
+    window.addEventListener(ACCESSIBILITY_SETTINGS_EVENT, sync)
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener(ACCESSIBILITY_SETTINGS_EVENT, sync)
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [])
+
+  return <MotionConfig reducedMotion={reduceMotion ? 'always' : 'user'}>{children}</MotionConfig>
 }
 
 function setMeta(attr, name, content) {
@@ -142,6 +170,24 @@ function ScrollManager() {
 }
 
 function PageLoader() {
+  if (/(?:^|\/)news\/?$/.test(window.location.pathname)) {
+    return (
+      <div className="page-loader" role="status" aria-live="polite">
+        <div className="page-container news-skeleton" aria-hidden="true">
+          <span className="news-skeleton-line is-title" />
+          <div className="news-skeleton-strip">
+            {Array.from({ length: 3 }, (_, index) => (
+              <span key={index} className="news-skeleton-card">
+                <span className="news-skeleton-cover" />
+                <span className="news-skeleton-line" />
+                <span className="news-skeleton-line is-short" />
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="page-loader" role="status" aria-live="polite">
       <span className="page-loader-spinner" />
@@ -157,6 +203,7 @@ export default function PortalApp() {
   return (
     <LanguageProvider>
       <AuthProvider>
+      <MotionPreferences>
       <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'}>
         <ScrollManager />
         <Seo />
@@ -190,6 +237,7 @@ export default function PortalApp() {
                     <Route path="/documents" element={<DocumentsPage />} />
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/faq" element={<FaqPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Suspense>
@@ -198,6 +246,7 @@ export default function PortalApp() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </MotionPreferences>
       </AuthProvider>
     </LanguageProvider>
   )

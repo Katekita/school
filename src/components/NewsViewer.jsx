@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, HelpCircle, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { newsItems } from '../data/mockData'
+import { getNews } from '../services'
 import { useLanguage } from '../i18n/LanguageContext'
+
+const newsItems = getNews()
 
 const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -213,7 +215,10 @@ export default function NewsViewer({ article }) {
       aria-label={article.title}
       tabIndex={-1}
       onCancel={(event) => { event.preventDefault(); close() }}
-      onClick={(event) => { if (event.target === event.currentTarget) close() }}
+      onClick={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect()
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close()
+      }}
       onPointerEnter={() => setPauseReason('hover', true)}
       onPointerLeave={() => setPauseReason('hover', false)}
       onPointerDown={() => setPauseReason('hold', true)}

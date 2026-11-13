@@ -2,10 +2,14 @@ import { useMemo } from 'react'
 import { Search, SearchX } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import PageBanner from '../../components/PageBanner'
-import { documents, events, newsItems } from '../../data/mockData'
+import { getDocuments, getEvents, getNews, getSchoolInfo, getTextbooks } from '../../services'
 import { useLanguage } from '../../i18n/LanguageContext'
-import schoolData from '../../data/school'
-import textbookCatalog from '../../data/textbooks.json'
+
+const documents = getDocuments()
+const events = getEvents()
+const newsItems = getNews()
+const schoolData = getSchoolInfo()
+const books = getTextbooks()
 
 export default function SearchPage() {
   const { t, lang } = useLanguage()
@@ -16,7 +20,7 @@ export default function SearchPage() {
     ...newsItems.map((item) => ({ ...item, type: t('search.typeNews') })),
     ...events.map((event) => ({ ...event, type: t('search.typeEvents') })),
     ...documents.map((doc) => ({ ...doc, type: t('search.typeDocuments') })),
-    ...textbookCatalog.books.map((book) => ({
+    ...books.map((book) => ({
       id: `book-${book.id}`,
       title: book.title,
       excerpt: `${book.grades.join(', ')} ${t('documents.grade')} · ${(lang === 'ky' ? book.categories : book.categoriesRu).join(' · ')} · ${book.author}`,

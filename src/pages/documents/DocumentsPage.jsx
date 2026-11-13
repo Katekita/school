@@ -3,11 +3,13 @@ import { ArrowUpRight, BookOpen, ExternalLink, Library, Search, SlidersHorizonta
 import { useSearchParams } from 'react-router-dom'
 import PageBanner from '../../components/PageBanner'
 import { useLanguage } from '../../i18n/LanguageContext'
-import textbookCatalog from '../../data/textbooks.json'
+import { getTextbooks } from '../../services'
+import EmptyState from '../../components/ui/EmptyState'
 
 const BOOKS_PER_PAGE = 24
 const officialLibraryUrl = 'https://www.okuma.kg/'
 const approvedListUrl = 'https://egov.kg/ru/ministry/education/news/46163'
+const textbookCatalog = { books: getTextbooks() }
 
 function normalize(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase()
@@ -163,11 +165,12 @@ export default function DocumentsPage() {
               )}
             </>
           ) : (
-            <div className="empty-state textbook-empty">
-              <Search size={30} />
-              <h3>{t('documents.noBooksTitle')}</h3>
-              <p>{t('documents.noBooksText')}</p>
-            </div>
+            <EmptyState
+              className="textbook-empty"
+              icon={<Search size={30} />}
+              title={t('documents.noBooksTitle')}
+              description={t('documents.noBooksText')}
+            />
           )}
 
           <aside className="textbook-source-note">

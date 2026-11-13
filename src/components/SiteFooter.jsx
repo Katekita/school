@@ -1,7 +1,9 @@
 import { BookOpen, ExternalLink, MapPin, Phone } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext'
-import schoolData from '../data/school'
+import { getSchoolInfo } from '../services'
+
+const schoolData = getSchoolInfo()
 
 export default function SiteFooter() {
   const { t } = useLanguage()

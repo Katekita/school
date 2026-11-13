@@ -1,4 +1,6 @@
+import { UsersRound } from 'lucide-react'
 import PageBanner from '../../components/PageBanner'
+import EmptyState from '../../components/ui/EmptyState'
 import { useLanguage } from '../../i18n/LanguageContext'
 
 export default function TeachersPage() {
@@ -15,10 +17,11 @@ export default function TeachersPage() {
               <p className="section-intro">{t('teachers.staffIntro')}</p>
             </div>
           </div>
-          <div className="placeholder-panel" style={{ marginTop: 18 }}>
-            <strong>{t('common.infoPreparing')}</strong>
-            <p>{t('common.infoRequest')}</p>
-          </div>
+          <EmptyState
+            icon={<UsersRound size={30} />}
+            title={t('common.infoPreparing')}
+            description={t('common.infoRequest')}
+          />
         </div>
       </section>
     </>

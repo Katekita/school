@@ -6,6 +6,7 @@ import { useLanguage } from '../i18n/LanguageContext'
 import PaletteIcon from './PaletteIcon'
 import { buildIndex, searchIndex } from '../utils/searchIndex'
 import { cycleTheme, readTheme } from '../utils/theme'
+import { getDocuments, getNews } from '../services'
 
 const RECENTS_KEY = 'school68_recent'
 
@@ -34,12 +35,24 @@ export default function CommandPalette({ open, onClose }) {
   const [active, setActive] = useState(0)
   const inputRef = useRef(null)
   const listRef = useRef(null)
+  const dialogRef = useRef(null)
 
-  const index = useMemo(() => buildIndex({ t, get }), [t, get])
+  const index = useMemo(
+    () => buildIndex({ t, get, news: getNews(), documents: getDocuments() }),
+    [t, get],
+  )
 
   // Быстрые действия доступны всегда, даже без введённого запроса.
   const actions = useMemo(
     () => [
+      {
+        id: 'action:schedule',
+        title: t('nav.schedule'),
+        keywords: ['/schedule', 'schedule'],
+        group: t('palette.groupActions'),
+        icon: 'CalendarDays',
+        to: '/students/schedule',
+      },
       {
         id: 'action:copy',
         title: t('palette.actionCopy'),
@@ -53,6 +66,38 @@ export default function CommandPalette({ open, onClose }) {
         group: t('palette.groupActions'),
         icon: 'Printer',
         run: () => window.print(),
+      },
+      {
+        id: 'action:news',
+        title: t('nav.news'),
+        keywords: ['/news', 'news'],
+        group: t('palette.groupActions'),
+        icon: 'Newspaper',
+        to: '/news',
+      },
+      {
+        id: 'action:settings',
+        title: t('settings.title'),
+        keywords: ['/settings', 'settings'],
+        group: t('palette.groupActions'),
+        icon: 'Settings',
+        to: '/settings',
+      },
+      {
+        id: 'action:events',
+        title: t('nav.events'),
+        keywords: ['/events', 'events'],
+        group: t('palette.groupActions'),
+        icon: 'CalendarHeart',
+        to: '/events',
+      },
+      {
+        id: 'action:teachers',
+        title: t('nav.teachers'),
+        keywords: ['/teachers', 'teachers'],
+        group: t('palette.groupActions'),
+        icon: 'UsersRound',
+        to: '/mugalimder',
       },
       {
         id: 'action:theme',
@@ -81,18 +126,22 @@ export default function CommandPalette({ open, onClose }) {
       return [...recent, ...actions].slice(0, 14)
     }
     const found = searchIndex(index, query)
-    const matchedActions = actions.filter((a) => a.title.toLowerCase().includes(q))
+    const matchedActions = actions.filter((a) =>
+      a.title.toLowerCase().includes(q) || a.keywords?.some((keyword) => keyword.includes(q)),
+    )
     return [...found, ...matchedActions].slice(0, 14)
   }, [query, index, actions])
 
   useEffect(() => {
     if (!open) return
+    const previousFocus = document.activeElement
     const timer = setTimeout(() => inputRef.current?.focus(), 40)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       clearTimeout(timer)
       document.body.style.overflow = prev
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus()
     }
   }, [open])
 
@@ -105,7 +154,8 @@ export default function CommandPalette({ open, onClose }) {
       return
     }
     onClose()
-    navigate(item.to)
+    if (/^https?:\/\//i.test(item.to)) window.location.assign(item.to)
+    else navigate(item.to)
   }
 
   function onKeyDown(event) {
@@ -116,12 +166,26 @@ export default function CommandPalette({ open, onClose }) {
     } else if (event.key === 'ArrowDown') {
       event.preventDefault()
       setActive((i) => (i + 1) % size)
+      inputRef.current?.focus()
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       setActive((i) => (i - 1 + size) % size)
-    } else if (event.key === 'Enter') {
+      inputRef.current?.focus()
+    } else if (event.key === 'Enter' && event.target === inputRef.current) {
       event.preventDefault()
       choose(results[active])
+    } else if (event.key === 'Tab') {
+      const focusable = dialogRef.current?.querySelectorAll('input:not([disabled]), button:not([disabled])')
+      if (!focusable?.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
   }
 
@@ -150,6 +214,7 @@ export default function CommandPalette({ open, onClose }) {
         >
           <motion.div
             className="palette"
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-label={t('palette.title')}
@@ -158,8 +223,9 @@ export default function CommandPalette({ open, onClose }) {
             exit={{ opacity: 0, y: 10, scale: 0.99 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={onKeyDown}
           >
-            <div className="palette-search" onKeyDown={onKeyDown}>
+            <div className="palette-search">
               <PaletteIcon name="Command" />
               <input
                 ref={inputRef}
@@ -167,13 +233,15 @@ export default function CommandPalette({ open, onClose }) {
                 onChange={(e) => onQueryChange(e.target.value)}
                 placeholder={t('palette.placeholder')}
                 aria-label={t('palette.title')}
+                aria-controls="palette-list"
+                aria-activedescendant={results.length ? `palette-item-${active}` : undefined}
                 autoComplete="off"
                 spellCheck="false"
               />
               <kbd>{t('palette.escHint')}</kbd>
             </div>
 
-            <ul className="palette-list" ref={listRef}>
+            <ul className="palette-list" id="palette-list" ref={listRef} role="listbox" aria-label={t('palette.title')}>
               {results.length === 0 && (
                 <li className="palette-empty">
                   <SearchX size={15} /> {t('palette.empty')}
@@ -182,8 +250,12 @@ export default function CommandPalette({ open, onClose }) {
               {results.map((item, i) => (
                 <li key={item.id} data-active={i === active}>
                   <button
+                    id={`palette-item-${i}`}
                     type="button"
+                    role="option"
+                    aria-selected={i === active}
                     className={`palette-item${i === active ? ' is-active' : ''}`}
+                    onFocus={() => setActive(i)}
                     onMouseMove={() => setActive(i)}
                     onClick={() => choose(item)}
                   >

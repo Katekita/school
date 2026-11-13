@@ -39,6 +39,11 @@ test('news strip and viewer render at requested widths, themes, and languages', 
         await expect(page.getByRole('dialog')).toBeVisible()
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
         await page.screenshot({ path: `test-results/news-qa/${language}-${theme}-${width}-viewer.png`, animations: 'disabled' })
+        await page.goto('/news?demo=1')
+        await expect(page.locator('html')).toHaveAttribute('lang', language)
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+        await expect(page.locator('.news-feed')).toBeVisible()
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
         expect(errors, `${language}/${theme}/${width} console errors`).toEqual([])
         expect(externalRequests, `${language}/${theme}/${width} external requests`).toEqual([])
         await page.close()
@@ -47,22 +52,14 @@ test('news strip and viewer render at requested widths, themes, and languages', 
   }
 })
 
-test('news archive filters stories by day and opens them in the viewer', async ({ page }) => {
+test('news feed groups stories by day and opens them in the viewer', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
   await page.goto('/news?demo=1')
 
-  const archive = page.locator('.news-archive-grid')
-  await expect(archive.getByRole('link', { name: /Демонстрационная новость 1/ })).toBeVisible()
-  await expect(archive.getByRole('link', { name: /Демонстрационная новость 2/ })).toHaveCount(0)
-
-  const secondDay = page.locator('.news-archive-days button').filter({
-    has: page.locator('time[datetime="2026-11-10"]'),
-  })
-  await secondDay.click()
-  await expect(secondDay).toHaveAttribute('aria-pressed', 'true')
-  const secondStory = archive.getByRole('link', { name: /Демонстрационная новость 2/ })
+  const feed = page.locator('.news-feed')
+  await expect(feed.locator('.news-feed-day')).toHaveCount(3)
+  const secondStory = feed.getByRole('link', { name: /Демонстрационная новость 2/ })
   await expect(secondStory).toBeVisible()
-  await expect(archive.getByRole('link', { name: /Демонстрационная новость 1/ })).toHaveCount(0)
 
   for (const width of [320, 375, 768, 1280, 1536]) {
     await page.setViewportSize({ width, height: 900 })
@@ -73,27 +70,58 @@ test('news archive filters stories by day and opens them in the viewer', async (
   await expect(page.getByRole('dialog', { name: /Демонстрационная новость 2/ })).toBeVisible()
 })
 
-test('news page has both the horizontal strip and the day archive', async ({ page }) => {
+test('news page shows today strip and grouped feed', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-11T09:00:00+05:00') })
   await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
   await page.goto('/news?demo=1')
 
-  const strip = page.locator('.news-strip')
+  const strip = page.locator('.today-strip')
   await expect(strip.getByRole('link', { name: /Демонстрационная новость 1/ })).toBeVisible()
-  await expect(page.locator('.news-archive')).toBeVisible()
+  await expect(page.locator('.news-feed')).toBeVisible()
   await strip.getByRole('link', { name: /Демонстрационная новость 1/ }).click()
   await expect(page.getByRole('dialog', { name: /Демонстрационная новость 1/ })).toBeVisible()
   await expect(page).toHaveURL(/\/news\/demo-test-one\?demo=1$/)
 })
 
-test('empty news displays a clearly labelled placeholder on home and archive pages', async ({ page }) => {
+test('today strip snaps and responds to keyboard; feed filters stay in the URL', async ({ browser }) => {
+  const page = await browser.newPage({ viewport: { width: 375, height: 812 } })
+  await page.clock.install({ time: new Date('2026-11-11T09:00:00+05:00') })
+  await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
+  await page.goto('/news?demo=1')
+
+  const strip = page.locator('.today-strip')
+  await expect(strip.locator('.today-card')).toHaveCount(1)
+  await strip.evaluate((element) => {
+    const card = element.firstElementChild
+    element.append(card.cloneNode(true), card.cloneNode(true))
+  })
+  await strip.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(() => strip.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+  await expect(strip).toHaveCSS('scroll-snap-type', 'x mandatory')
+
+  const category = page.locator('.news-feed-chips button').filter({ hasText: 'ТЕСТ' })
+  await category.click()
+  await expect(page).toHaveURL((url) => url.searchParams.get('category') === 'ТЕСТ' && url.searchParams.get('demo') === '1')
+  await page.locator('.news-feed-chips button').first().click()
+  await expect(page).toHaveURL((url) => !url.searchParams.has('category') && url.searchParams.get('demo') === '1')
+
+  const search = page.locator('.news-feed-search input')
+  await search.fill('перелистывания')
+  await expect(page).toHaveURL((url) => url.searchParams.get('q') === 'перелистывания' && url.searchParams.get('demo') === '1')
+  await expect(page.locator('.news-feed .news-archive-card')).toHaveCount(1)
+  await page.close()
+})
+
+test('empty news states appear on home and archive without a demo query', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('school68_language', 'ru'))
 
   for (const route of ['/', '/news']) {
     await page.goto(route)
-    const placeholder = page.locator('.news-empty-card')
-    await expect(placeholder).toBeVisible()
-    await expect(placeholder.getByRole('heading', { name: 'Официальные публикации пока не добавлены' })).toBeVisible()
-    await expect(placeholder.getByRole('link', { name: /68\.school_/ })).toHaveAttribute('href', 'https://www.instagram.com/68.school_/')
+    const emptyState = page.locator('.news-empty-card')
+    await expect(emptyState).toBeVisible()
+    await expect(emptyState).toContainText('Новости появятся здесь')
+    expect(new URL(page.url()).searchParams.has('demo')).toBe(false)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280)
   }
 })
@@ -187,7 +215,9 @@ test('a direct news URL remains a regular article page', async ({ page }) => {
   await page.goto('/news/demo-test-two?demo=1')
   await expect(page.getByRole('heading', { name: /Демонстрационная новость 2/ })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  const articleNavigation = page.locator('.news-article-nav')
-  await expect(articleNavigation.locator('a').nth(0)).toHaveAttribute('href', '/news/demo-test-one?demo=1')
-  await expect(articleNavigation.locator('a').nth(1)).toHaveAttribute('href', '/news/demo-test-three?demo=1')
+  await expect(page.getByRole('button', { name: 'Поделиться' })).toBeVisible()
+  await expect(page.locator('.news-detail-meta')).toContainText('Время чтения')
+  await expect(page.locator('.news-detail-meta')).not.toContainText('Администрация школы')
+  await expect(page.locator('.news-related a')).toHaveCount(2)
+  await expect(page.locator('.news-related a').first()).toHaveAttribute('href', '/news/demo-test-one?demo=1')
 })

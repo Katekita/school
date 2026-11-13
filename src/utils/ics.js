@@ -1,5 +1,5 @@
-import { lessonTimes, schedule10, scheduleClasses, subjectName, weekDays } from '../data/schedule'
-import { currentWeekStart } from './scheduleLive'
+import { lessonTimes, schedule10, scheduleClasses, subjectName, weekDays } from '../data/schedule.js'
+import { currentWeekStart } from './scheduleLive.js'
 
 // Экспорт недели в формат iCalendar (.ics): работает офлайн, без бэкенда.
 // Каждый урок — отдельное событие с кабинетом в описании.
@@ -13,9 +13,13 @@ function pad(value) {
 // Локальное время без смещения: школа работает в одном часовом поясе.
 function icsDate(date) {
   return (
-    `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}` +
-    `T${pad(date.getHours())}${pad(date.getMinutes())}00`
+    `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}` +
+    `T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}00`
   )
+}
+
+function icsUtcStamp(date) {
+  return `${icsDate(date)}Z`
 }
 
 function escapeText(value) {
@@ -58,20 +62,20 @@ export function buildIcs(classKey, lang, scheduleEntries = null) {
       const [sh, sm] = time.start.split(':').map(Number)
       const [eh, em] = time.end.split(':').map(Number)
       const start = new Date(monday)
-      start.setDate(monday.getDate() + offset)
-      start.setHours(sh, sm, 0, 0)
+      start.setUTCDate(monday.getUTCDate() + offset)
+      start.setUTCHours(sh, sm, 0, 0)
       const end = new Date(monday)
-      end.setDate(monday.getDate() + offset)
-      end.setHours(eh, em, 0, 0)
+      end.setUTCDate(monday.getUTCDate() + offset)
+      end.setUTCHours(eh, em, 0, 0)
 
       const subject = subjectName(item.subject, lang)
       events.push(
         [
           'BEGIN:VEVENT',
           `UID:${classKey}-${day.id}-${index + 1}@school68.local`,
-          `DTSTAMP:${icsDate(stamp)}`,
-          `DTSTART:${icsDate(start)}`,
-          `DTEND:${icsDate(end)}`,
+          `DTSTAMP:${icsUtcStamp(stamp)}`,
+          `DTSTART;TZID=Asia/Bishkek:${icsDate(start)}`,
+          `DTEND;TZID=Asia/Bishkek:${icsDate(end)}`,
           line(`SUMMARY:${escapeText(subject)}`),
           line(
             `DESCRIPTION:${escapeText(
@@ -92,6 +96,15 @@ export function buildIcs(classKey, lang, scheduleEntries = null) {
     'PRODID:-//School 68//Schedule//KG',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
+    'BEGIN:VTIMEZONE',
+    'TZID:Asia/Bishkek',
+    'BEGIN:STANDARD',
+    'DTSTART:19700101T000000',
+    'TZOFFSETFROM:+0600',
+    'TZOFFSETTO:+0600',
+    'TZNAME:+06',
+    'END:STANDARD',
+    'END:VTIMEZONE',
     line(`X-WR-CALNAME:${escapeText(`${classKey} · №68`)}`),
     ...events,
     'END:VCALENDAR',
@@ -104,6 +117,51 @@ export function downloadIcs(classKey, lang, scheduleEntries = null) {
   const link = document.createElement('a')
   link.href = url
   link.download = `schedule-${classKey}.ics`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+export function buildEventIcs(event) {
+  const date = String(event?.date || '').slice(0, 10)
+  const parsedDate = new Date(`${date}T00:00:00Z`)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
+    throw new Error('Event date must be a valid ISO date')
+  }
+
+  const endDate = new Date(parsedDate)
+  endDate.setUTCDate(endDate.getUTCDate() + 1)
+  const uid = String(event.slug || `${date}-${event.title}`).replace(/[^a-zA-Z0-9._-]/g, '-')
+  const summary = String(event.title || '')
+  const description = String(event.summary || event.excerpt || '')
+  const location = String(event.location || '')
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//School 68//Events//KG',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${uid}@school68.local`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`,
+    `DTSTART;VALUE=DATE:${date.replace(/-/g, '')}`,
+    `DTEND;VALUE=DATE:${endDate.toISOString().slice(0, 10).replace(/-/g, '')}`,
+    line(`SUMMARY:${escapeText(summary)}`),
+    ...(description ? [line(`DESCRIPTION:${escapeText(description)}`)] : []),
+    ...(location ? [line(`LOCATION:${escapeText(location)}`)] : []),
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n')
+}
+
+export function downloadEventIcs(event) {
+  const blob = new Blob([buildEventIcs(event)], { type: 'text/calendar;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `event-${String(event.slug || event.date).replace(/[^a-zA-Z0-9_-]/g, '-')}.ics`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)

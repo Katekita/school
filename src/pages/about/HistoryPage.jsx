@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom'
 import PageBanner from '../../components/PageBanner'
 import Reveal from '../../components/Reveal'
 import { useLanguage } from '../../i18n/LanguageContext'
-import schoolData from '../../data/school'
+
+const schoolData = getSchoolInfo()
+import { getSchoolInfo } from '../../services'
 
 export default function HistoryPage() {
   const { t } = useLanguage()
@@ -54,4 +56,3 @@ export default function HistoryPage() {
     </>
   )
 }
-

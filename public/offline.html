@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ky">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d3a6b" />
+    <title>Офлайн — Мектеп №68</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; color: var(--ink, #0b2545); background: var(--bg, #f5f8fc); }
+      body { display: grid; min-height: 100vh; box-sizing: border-box; place-items: center; margin: 0; padding: 24px; }
+      main { width: min(100%, 520px); box-sizing: border-box; padding: clamp(24px, 6vw, 40px); border: 1px solid var(--line, #e3eaf3); border-radius: 20px; background: var(--surface, #fff); text-align: center; }
+      h1 { margin: 0 0 12px; font-size: clamp(24px, 6vw, 34px); }
+      p { color: var(--muted, #4b5563); line-height: 1.6; }
+      a { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; margin-top: 12px; padding: 0 18px; border-radius: 12px; background: var(--blue, #0d3a6b); color: #fff; font-weight: 650; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 id="title">Сиз офлайнсыз</h1>
+      <p id="message">Интернет байланышы жок. Тармакка кошулганда баракты кайра жүктөңүз.</p>
+      <a id="retry" href="./">Кайра аракет кылуу</a>
+    </main>
+    <script>
+      const copy = {
+        ky: ['Сиз офлайнсыз', 'Интернет байланышы жок. Тармакка кошулганда баракты кайра жүктөңүз.', 'Кайра аракет кылуу'],
+        ru: ['Нет подключения', 'Интернет недоступен. Когда связь восстановится, перезагрузите страницу.', 'Попробовать снова'],
+        en: ['You are offline', 'There is no internet connection. Reload this page when you are back online.', 'Try again'],
+      }
+      let language = 'ky'
+      try {
+        const saved = localStorage.getItem('school68_language')
+        if (saved && copy[saved]) language = saved
+      } catch {
+        // The offline page remains usable when storage is disabled.
+      }
+      const [title, message, retry] = copy[language]
+      document.documentElement.lang = language
+      document.title = title
+      document.getElementById('title').textContent = title
+      document.getElementById('message').textContent = message
+      document.getElementById('retry').textContent = retry
+    </script>
+  </body>
+</html>

@@ -3,12 +3,18 @@ import devFixture from './__fixtures__/news.dev.json'
 import events from './generated/events.json'
 import documents from './generated/docs.json'
 
-let sourceNews = news
-if (import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1') {
-  sourceNews = devFixture
-}
+const sourceNews = Array.isArray(news) ? [...devFixture, ...news] : news
 
-export const newsItems = sourceNews.filter((item) => item.published !== false).map((item) => ({
+const isNewsRecord = (item) => item && typeof item === 'object' && !Array.isArray(item)
+  && typeof item.slug === 'string' && Boolean(item.slug.trim())
+  && typeof item.title === 'string' && Boolean(item.title.trim())
+const validSourceNews = Array.isArray(sourceNews)
+  ? [...new Map(sourceNews.filter(isNewsRecord).map((item) => [item.slug, item])).values()]
+  : []
+
+export const newsDataError = !Array.isArray(sourceNews)
+  || sourceNews.filter(isNewsRecord).length !== sourceNews.length
+export const newsItems = validSourceNews.filter((item) => item.published !== false).map((item) => ({
   ...item,
   excerpt: item.excerpt ?? item.summary ?? '',
   content: item.content ?? item.body ?? '',

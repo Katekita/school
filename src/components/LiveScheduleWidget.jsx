@@ -5,7 +5,9 @@ import { useLanguage } from '../i18n/LanguageContext'
 import useNow from '../hooks/useNow'
 import { getNextLesson, getLiveStatus, weekdayId } from '../utils/scheduleLive'
 import { readSavedClass } from '../utils/classStorage'
-import { lessonTimes, subjectName } from '../data/schedule'
+import { getSchedule } from '../services'
+
+const { lessonTimes, subjectName } = getSchedule()
 
 // Живой виджет: что происходит в школе прямо сейчас и что будет следующим.
 // Состояние нигде не хранится — всё считается из часов браузера на тике useNow,
@@ -23,17 +25,16 @@ export default function LiveScheduleWidget({ variant = 'card' }) {
     before: t('live.before'),
     done: t('live.done'),
     weekend: t('live.weekend'),
-    empty: t('live.empty'),
+    empty: t('live.unpublished'),
   }[live.kind]
 
   const detail = (() => {
     if (live.kind === 'lesson') {
-      const remaining = live.end - (now.getHours() * 60 + now.getMinutes())
       return {
         title: subjectName(live.lesson.subject, lang),
         meta: `${live.index + 1} · ${lessonTimes[live.index].start}–${lessonTimes[live.index].end}`,
         room: live.lesson.room,
-        countdown: `${t('live.endsIn')} ${remaining} ${t('live.minutes')}`,
+        countdown: `${t('live.endsIn')} ${live.remaining} ${t('live.minutes')}`,
         progress: live.progress,
       }
     }
@@ -46,11 +47,11 @@ export default function LiveScheduleWidget({ variant = 'card' }) {
         countdown: `${t('live.startsIn')} ${live.endsIn} ${t('live.minutes')}`,
       }
     }
-    if (live.kind === 'before' && next) {
+    if (live.kind === 'before' && live.lesson) {
       return {
-        title: subjectName(next.lesson.subject, lang),
-        meta: next.time.start,
-        countdown: `${t('live.startsIn')} ${live.startsIn} ${t('live.minutes')}`,
+        title: subjectName(live.lesson.subject, lang),
+        meta: lessonTimes[live.lesson.lesson_number - 1]?.start || '',
+        countdown: `${t('live.startsIn')} ${live.remaining} ${t('live.minutes')}`,
       }
     }
     return { title: headline, meta: '' }
@@ -127,7 +128,7 @@ export default function LiveScheduleWidget({ variant = 'card' }) {
       )}
 
       <Link className="text-link live-card-link" to={`/students/schedule?class=${classKey}&day=${weekdayId(now)}`}>
-        {t('live.todayLessons')} <ArrowRight size={14} />
+        {t('live.viewSchedule')} <ArrowRight size={14} />
       </Link>
     </motion.section>
   )

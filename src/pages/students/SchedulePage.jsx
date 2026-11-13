@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, Clock, DoorOpen, GraduationCap, Navigation, Sparkles } from 'lucide-react'
+import { CalendarDays, Clock, DoorOpen, GraduationCap, List, Navigation, Sparkles } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import PageBanner from '../../components/PageBanner'
 import Reveal from '../../components/Reveal'
@@ -8,78 +8,38 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { useAuth } from '../../auth/AuthContext'
 import { supabase } from '../../lib/supabase'
 import useNow from '../../hooks/useNow'
-import { lessonTimes, scheduleYear, subjectName, weekDays } from '../../data/schedule'
+import { getSchedule } from '../../services'
 import { readSavedClass, saveClass } from '../../utils/classStorage'
+import { getEntriesLiveStatus, toMinutes, weekdayId } from '../../utils/scheduleLive'
+import SchedulePlanner from '../../components/SchedulePlanner'
 import DataNotice from '../../components/DataNotice'
 
-const weekdayNumber = Object.fromEntries(weekDays.map((day, index) => [day.id, index + 1]))
-const dayIds = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+const { lessonTimes, scheduleYear, subjectName, weekDays } = getSchedule()
 
-function timeMinutes(value) {
-  const [hours, minutes] = String(value).split(':').map(Number)
-  return hours * 60 + minutes
-}
+const weekdayNumber = Object.fromEntries(weekDays.map((day, index) => [day.id, index + 1]))
+const VIEW_MODE_KEY = 'school68_schedule_view'
 
 function formatTime(value) {
   return String(value || '').slice(0, 5)
 }
 
-function getTodayStatus(entries, now) {
-  const weekday = now.getDay()
-  if (weekday === 0 || weekday === 6) return { kind: 'weekend' }
-
-  const lessons = entries
-    .filter((entry) => entry.weekday === weekday)
-    .sort((a, b) => a.lesson_number - b.lesson_number)
-  if (!lessons.length) return { kind: 'empty' }
-
-  const currentMinutes = now.getHours() * 60 + now.getMinutes()
-  const currentIndex = lessons.findIndex((entry) =>
-    currentMinutes >= timeMinutes(entry.starts_at) && currentMinutes < timeMinutes(entry.ends_at),
-  )
-  const completed = lessons.filter((entry) => timeMinutes(entry.ends_at) <= currentMinutes).length
-  let progress = completed / lessons.length
-
-  if (currentIndex >= 0) {
-    const current = lessons[currentIndex]
-    const start = timeMinutes(current.starts_at)
-    const end = timeMinutes(current.ends_at)
-    const lessonProgress = (currentMinutes - start) / Math.max(1, end - start)
-    progress = (completed + lessonProgress) / lessons.length
-    return {
-      kind: 'lesson',
-      lesson: current,
-      remaining: Math.max(1, Math.ceil(end - currentMinutes)),
-      lessonProgress,
-      progress,
-      completed,
-      total: lessons.length,
-      lessons,
-    }
+function readViewMode() {
+  try {
+    const saved = localStorage.getItem(VIEW_MODE_KEY)
+    if (['today', 'week', 'list'].includes(saved)) return saved
+  } catch {
+    // View mode is an optional preference.
   }
+  const day = weekdayId()
+  return weekdayNumber[day] ? 'today' : 'week'
+}
 
-  const nextIndex = lessons.findIndex((entry) => timeMinutes(entry.starts_at) > currentMinutes)
-  if (nextIndex >= 0) {
-    const next = lessons[nextIndex]
-    const previous = lessons[nextIndex - 1]
-    const remaining = Math.max(1, Math.ceil(timeMinutes(next.starts_at) - currentMinutes))
-    if (previous && currentMinutes >= timeMinutes(previous.ends_at)) {
-      const breakTotal = timeMinutes(next.starts_at) - timeMinutes(previous.ends_at)
-      return {
-        kind: 'break',
-        lesson: next,
-        remaining,
-        breakProgress: (currentMinutes - timeMinutes(previous.ends_at)) / Math.max(1, breakTotal),
-        completed,
-        total: lessons.length,
-        progress,
-        lessons,
-      }
-    }
-    return { kind: 'next', lesson: next, remaining, completed, total: lessons.length, progress, lessons }
+function saveViewMode(mode) {
+  try {
+    localStorage.setItem(VIEW_MODE_KEY, mode)
+  } catch {
+    // View mode is an optional preference.
   }
-
-  return { kind: 'done', completed: lessons.length, total: lessons.length, progress: 1, lessons }
 }
 
 export default function SchedulePage() {
@@ -96,10 +56,7 @@ export default function SchedulePage() {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [viewMode, setViewMode] = useState(() => {
-    const day = new Date().getDay()
-    return day >= 1 && day <= 5 ? 'today' : 'week'
-  })
+  const [viewMode, setViewMode] = useState(readViewMode)
 
   useEffect(() => {
     let active = true
@@ -172,14 +129,14 @@ export default function SchedulePage() {
     lessons: entries.filter((item) => item.weekday === weekdayNumber[day.id]),
   })), [entries])
   const requestedDay = weekDays.some((day) => day.id === params.get('day')) ? params.get('day') : ''
-  const todayId = dayIds[now.getDay()]
-  const live = useMemo(() => getTodayStatus(entries, now), [entries, now])
-  const visibleDays = viewMode === 'today' && weekdayNumber[todayId]
+  const todayId = weekdayId(now)
+  const live = useMemo(() => getEntriesLiveStatus(entries, now), [entries, now])
+  const visibleDays = viewMode === 'today'
     ? days.filter((day) => day.id === todayId)
     : days
   const liveTitle = live.kind === 'lesson'
     ? subjectName(live.lesson.subject, lang)
-    : live.kind === 'next' || live.kind === 'break'
+    : live.kind === 'before' || live.kind === 'break'
       ? subjectName(live.lesson.subject, lang)
       : live.kind === 'weekend'
         ? t('live.weekend')
@@ -190,7 +147,7 @@ export default function SchedulePage() {
     ? t('live.now')
     : live.kind === 'break'
       ? t('live.break')
-      : live.kind === 'next'
+      : live.kind === 'before'
       ? t('live.next')
       : t('live.liveTitle')
 
@@ -209,8 +166,8 @@ export default function SchedulePage() {
   }
 
   function jumpToToday() {
-    if (todayId === 'sun' || todayId === 'sat') return
     setViewMode('today')
+    saveViewMode('today')
     const next = new URLSearchParams(params)
     next.set('day', todayId)
     setParams(next, { replace: true })
@@ -218,6 +175,15 @@ export default function SchedulePage() {
 
   function showWeek() {
     setViewMode('week')
+    saveViewMode('week')
+    const next = new URLSearchParams(params)
+    next.delete('day')
+    setParams(next, { replace: true })
+  }
+
+  function showList() {
+    setViewMode('list')
+    saveViewMode('list')
     const next = new URLSearchParams(params)
     next.delete('day')
     setParams(next, { replace: true })
@@ -282,7 +248,6 @@ export default function SchedulePage() {
                 <button
                   type="button"
                   aria-pressed={viewMode === 'today'}
-                  disabled={todayId === 'sun' || todayId === 'sat'}
                   className={viewMode === 'today' ? 'is-active' : ''}
                   onClick={jumpToToday}
                 >
@@ -295,6 +260,14 @@ export default function SchedulePage() {
                   onClick={showWeek}
                 >
                   <CalendarDays size={15} /> {t('schedule.weekView')}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={viewMode === 'list'}
+                  className={viewMode === 'list' ? 'is-active' : ''}
+                  onClick={showList}
+                >
+                  <List size={15} /> {t('schedule.listView')}
                 </button>
               </div>
 
@@ -323,14 +296,14 @@ export default function SchedulePage() {
                       {liveLabel}
                     </span>
                     <h2>{liveTitle}</h2>
-                    {(live.kind === 'lesson' || live.kind === 'next' || live.kind === 'break') && (
+                    {(live.kind === 'lesson' || live.kind === 'before' || live.kind === 'break') && (
                       <p className="schedule-live-meta">
                         <Clock size={14} /> {live.lesson.lesson_number}. {formatTime(live.lesson.starts_at)}–{formatTime(live.lesson.ends_at)}
                         {live.lesson.room && <><DoorOpen size={14} /> {live.lesson.room}</>}
                       </p>
                     )}
                   </div>
-                  {(live.kind === 'lesson' || live.kind === 'next' || live.kind === 'break') && (
+                  {(live.kind === 'lesson' || live.kind === 'before' || live.kind === 'break') && (
                     <div className="schedule-live-countdown">
                       <strong>{live.kind === 'lesson' ? t('live.endsIn') : t('live.startsIn')}</strong>
                       <span>{live.remaining} {t('live.minutes')}</span>
@@ -341,7 +314,7 @@ export default function SchedulePage() {
                       <span style={{ transform: `scaleX(${live.kind === 'lesson' ? live.lessonProgress : live.breakProgress})` }} />
                     </div>
                   )}
-                  {todayId !== 'sun' && todayId !== 'sat' && (
+                  {weekdayNumber[todayId] && (
                     <button type="button" className="schedule-today-button" onClick={jumpToToday}>
                       <Navigation size={15} /> {t('schedule.today')}
                     </button>
@@ -363,12 +336,11 @@ export default function SchedulePage() {
                     </header>
                     <ol className="day-timeline-list">
                       {live.lessons.map((item, index) => {
-                        const start = timeMinutes(item.starts_at)
-                        const end = timeMinutes(item.ends_at)
+                        const start = toMinutes(item.starts_at)
                         const isNow = live.kind === 'lesson' && live.lesson.lesson_number === item.lesson_number
-                        const isDone = now.getHours() * 60 + now.getMinutes() >= end
+                        const isDone = live.completed > item.lesson_number - 1
                         const previous = live.lessons[index - 1]
-                        const breakMinutes = previous ? start - timeMinutes(previous.ends_at) : 0
+                        const breakMinutes = previous ? start - toMinutes(previous.ends_at) : 0
                         return (
                           <li className="day-timeline-item" key={item.lesson_number}>
                             {breakMinutes > 0 && (
@@ -394,7 +366,33 @@ export default function SchedulePage() {
                 </Reveal>
               )}
 
-              <div className="week-grid">
+              {viewMode === 'list' ? (
+                <div className="schedule-compact-wrap">
+                  <table className="schedule-compact-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">{t('schedule.dayLabel')}</th>
+                        <th scope="col">{t('schedule.lessonLabel')}</th>
+                        <th scope="col">{t('schedule.timeLabel')}</th>
+                        <th scope="col">{t('schedule.subjectLabel')}</th>
+                        <th scope="col">{t('schedule.room')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {days.flatMap((day) => day.lessons.map((item) => (
+                        <tr key={`${day.id}-${item.lesson_number}`}>
+                          <td>{day[lang] || day.ky}</td>
+                          <td>{item.lesson_number}</td>
+                          <td>{formatTime(item.starts_at)}–{formatTime(item.ends_at)}</td>
+                          <td>{subjectName(item.subject, lang)}</td>
+                          <td>{item.room || '—'}</td>
+                        </tr>
+                      )))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : visibleDays.length ? (
+                <div className="week-grid">
                 {visibleDays.map((day, index) => {
                   const isToday = day.id === todayId
                   return (
@@ -431,6 +429,9 @@ export default function SchedulePage() {
                   )
                 })}
               </div>
+              ) : (
+                <p className="day-empty">{t('live.weekend')}</p>
+              )}
 
               <Reveal>
                 <aside className="bells-card">
@@ -459,6 +460,7 @@ export default function SchedulePage() {
               <p>{t('schedule.emptyText')}</p>
             </div>
           )}
+          {!loading && <SchedulePlanner />}
         </div>
       </section>
     </>

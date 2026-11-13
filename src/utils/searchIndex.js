@@ -20,7 +20,7 @@ const sections = [
   { to: '/search', group: 'nav', key: 'common.search', icon: 'Search' },
 ]
 
-export function buildIndex({ t, get }) {
+export function buildIndex({ t, get, news = [], documents = [] }) {
   const items = sections.map((s) => ({
     id: `section:${s.to}`,
     title: t(s.key),
@@ -44,6 +44,35 @@ export function buildIndex({ t, get }) {
     })
   })
 
+  news.forEach((item) => {
+    items.push({
+      id: `news:${item.slug}`,
+      title: item.title,
+      subtitle: item.excerpt,
+      searchText: `${item.content || ''} ${item.category || ''}`,
+      group: t('nav.news'),
+      to: `/news/${encodeURIComponent(item.slug)}`,
+      icon: 'Newspaper',
+      kind: 'news',
+    })
+  })
+
+  documents.forEach((item) => {
+    const url = typeof item.url === 'string' && /^(https?:\/\/|\/|\.\/|\.\.\/)/i.test(item.url)
+      ? item.url
+      : '/documents'
+    items.push({
+      id: `document:${item.id}`,
+      title: item.title,
+      subtitle: item.category || item.excerpt,
+      searchText: `${item.content || ''} ${item.category || ''}`,
+      group: t('nav.documents'),
+      to: url,
+      icon: 'FileText',
+      kind: 'document',
+    })
+  })
+
   return items
 }
 
@@ -54,7 +83,7 @@ export function searchIndex(index, query) {
   const tokens = q.split(/\s+/).filter(Boolean)
   return index
     .map((item) => {
-      const haystack = `${item.title} ${item.subtitle} ${item.group}`.toLowerCase()
+      const haystack = `${item.title} ${item.subtitle} ${item.searchText || ''} ${item.group}`.toLowerCase()
       let score = 0
       if (haystack.startsWith(q)) score += 100
       if (item.title.toLowerCase().includes(q)) score += 60

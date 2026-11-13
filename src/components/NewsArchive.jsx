@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { ArrowRight, CalendarDays } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
-import { newsItems } from '../data/mockData'
+import { getNews } from '../services'
 import { useLanguage } from '../i18n/LanguageContext'
+
+const newsItems = getNews()
 
 const pageSize = 12
 

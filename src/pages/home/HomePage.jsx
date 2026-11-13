@@ -4,18 +4,27 @@ import {
   ArrowRight,
   Award,
   BookOpen,
+  CalendarDays,
+  FileText,
   GraduationCap,
   MapPin,
+  Newspaper,
   School,
   UsersRound,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../../i18n/LanguageContext'
 import Reveal from '../../components/Reveal'
+import useNow from '../../hooks/useNow'
 import useSpotlight from '../../hooks/useSpotlight'
-import schoolData from '../../data/school'
+import { getEvents, getSchoolInfo } from '../../services'
 import DataNotice from '../../components/DataNotice'
 import NewsStrip from '../../components/NewsStrip'
+import EmptyState from '../../components/ui/EmptyState'
+import { scheduleStats } from '../../data/stats'
+import { downloadEventIcs } from '../../utils/ics'
+
+const schoolData = getSchoolInfo()
 
 const directions = [
   { key: 'school', icon: School, to: '/mektep' },
@@ -26,8 +35,18 @@ const directions = [
   { key: 'alykul', icon: GraduationCap, to: '/about/alykul-osmonov' },
 ]
 
+const shortcuts = [
+  { label: 'home.quickSchedule', icon: BookOpen, to: '/students/schedule' },
+  { label: 'home.quickAdmission', icon: GraduationCap, to: '/kabyl-aluu' },
+  { label: 'home.quickTeachers', icon: UsersRound, to: '/mugalimder' },
+  { label: 'home.quickDocuments', icon: FileText, to: '/documents' },
+  { label: 'home.quickNews', icon: Newspaper, to: '/news' },
+  { label: 'home.quickContacts', icon: MapPin, to: '/baylanysh' },
+]
+
 export default function HomePage() {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const now = useNow(60_000)
   const gridRef = useSpotlight()
   const heroRef = useRef(null)
   const reduce = useReducedMotion()
@@ -38,6 +57,23 @@ export default function HomePage() {
     offset: ['start start', 'end start'],
   })
   const copyY = useTransform(scrollYProgress, [0, 1], ['0%', reduce ? '0%' : '-8%'])
+  const events = getEvents()
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bishkek' }).format(now)
+  const eventDateKey = (value) => {
+    const date = new Date(value)
+    return Number.isFinite(date.getTime())
+      ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bishkek' }).format(date)
+      : ''
+  }
+  const upcomingEvents = events
+    .filter((event) => eventDateKey(event.date) >= today && eventDateKey(event.date))
+    .sort((a, b) => eventDateKey(a.date).localeCompare(eventDateKey(b.date)))
+    .slice(0, 3)
+  const stats = scheduleStats()
+  const eventDateFormatter = new Intl.DateTimeFormat(
+    { ky: 'ky-KG', ru: 'ru-RU', en: 'en-US' }[lang] || 'ru-RU',
+    { dateStyle: 'long', timeZone: 'Asia/Bishkek' },
+  )
 
   return (
     <>
@@ -112,6 +148,25 @@ export default function HomePage() {
         </Reveal>
       </section>
 
+      <section className="home-section home-quick-access">
+        <div className="page-container">
+          <Reveal>
+            <h2 className="section-title">{t('home.quickAccessTitle')}</h2>
+          </Reveal>
+          <div className="home-shortcut-grid">
+            {shortcuts.map(({ label, icon: Icon, to }, index) => (
+              <Reveal className="home-shortcut" delay={index * 0.04} key={label}>
+                <Link className="home-shortcut-link" to={to}>
+                  <Icon aria-hidden="true" size={20} />
+                  <span>{t(label)}</span>
+                  <ArrowRight aria-hidden="true" size={16} />
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="home-section">
         <div className="page-container">
           <div className="section-heading-row">
@@ -158,6 +213,57 @@ export default function HomePage() {
           <NewsStrip />
         </div>
       </section>
+
+      <section className="home-section home-upcoming-events">
+        <div className="page-container">
+          <Reveal>
+            <h2 className="section-title">{t('home.eventsTitle')}</h2>
+          </Reveal>
+          {upcomingEvents.length ? (
+            <div className="home-event-list">
+              {upcomingEvents.map((event) => (
+                <article className="home-event-card" key={event.id || event.slug || `${event.title}-${event.date}`}>
+                  <div>
+                    <time dateTime={event.date}>{eventDateFormatter.format(new Date(event.date))}</time>
+                    <h3>{event.title}</h3>
+                    {event.summary && <p>{event.summary}</p>}
+                  </div>
+                  <button className="button-secondary home-event-calendar" onClick={() => downloadEventIcs(event)} type="button">
+                    <CalendarDays aria-hidden="true" size={17} />
+                    {t('home.calendarDownload')}
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title={t('events.emptyTitle')} description={t('events.emptyText')} />
+          )}
+        </div>
+      </section>
+
+      {stats.classes > 0 && (
+        <section className="home-section home-statistics">
+          <div className="page-container">
+            <Reveal>
+              <p className="eyebrow">{t('home.statsEyebrow')}</p>
+              <h2 className="section-title">{t('home.statsTitle')}</h2>
+            </Reveal>
+            <div className="home-stats-grid">
+              {[
+                ['classes', 'statClasses'],
+                ['lessons', 'statLessons'],
+                ['subjects', 'statSubjects'],
+                ['rooms', 'statRooms'],
+              ].map(([key, label]) => (
+                <div className="home-stat-card" key={key}>
+                  <strong>{stats[key]}</strong>
+                  <span>{t(`home.${label}`)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="content-section">
         <div className="page-container">

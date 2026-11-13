@@ -2,7 +2,9 @@ import { Clock3, ExternalLink, MapPin, Phone } from 'lucide-react'
 import PageBanner from '../../components/PageBanner'
 import Reveal from '../../components/Reveal'
 import { useLanguage } from '../../i18n/LanguageContext'
-import schoolData from '../../data/school'
+
+const schoolData = getSchoolInfo()
+import { getSchoolInfo } from '../../services'
 import DataNotice from '../../components/DataNotice'
 
 export default function ContactPage() {

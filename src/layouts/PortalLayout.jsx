@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { ArrowUp } from 'lucide-react'
 import SiteHeader from '../components/SiteHeader'
 import SiteFooter from '../components/SiteFooter'
+import NetworkStatusNotice from '../components/NetworkStatusNotice'
 import { useLanguage } from '../i18n/LanguageContext'
 
 const CommandPalette = lazy(() => import('../components/CommandPalette'))
@@ -57,6 +58,7 @@ export default function PortalLayout() {
 
   return (
     <div className="site-shell">
+      <NetworkStatusNotice />
       <SiteHeader onOpenPalette={() => setPaletteOpen(true)} />
       <main id="main-content">
         <Suspense fallback={<PageLoader />}>

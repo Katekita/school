@@ -48,14 +48,22 @@
     <script>
       // Тема применяется до первой отрисовки — так не будет вспышки светлого фона.
       (function () {
+        var root = document.documentElement
+        root.dataset.textSize = 'medium'
+        root.dataset.reducedMotion = 'false'
+        root.dataset.visibleFocus = 'false'
         try {
           var saved = localStorage.getItem('school68_theme') || 'auto'
           var dark =
             saved === 'dark' ||
             (saved === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-          document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-        } catch (e) {
-          document.documentElement.dataset.theme = 'light'
+          root.dataset.theme = dark ? 'dark' : 'light'
+          var textSize = localStorage.getItem('school68_text_size')
+          if (['small', 'medium', 'large'].indexOf(textSize) !== -1) root.dataset.textSize = textSize
+          root.dataset.reducedMotion = String(localStorage.getItem('school68_reduce_motion') === 'true')
+          root.dataset.visibleFocus = String(localStorage.getItem('school68_visible_focus') === 'true')
+        } catch {
+          root.dataset.theme = 'light'
         }
       })()
     </script>
