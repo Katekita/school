@@ -32,6 +32,7 @@ const NewsPage = lazy(() => import('./pages/news/NewsPage'))
 const NewsDetailPage = lazy(() => import('./pages/news/NewsDetailPage'))
 const DocumentsPage = lazy(() => import('./pages/documents/DocumentsPage'))
 const SchedulePage = lazy(() => import('./pages/students/SchedulePage'))
+const AdminPage = lazy(() => import('./pages/admin/AdminPage'))
 const SearchPage = lazy(() => import('./pages/search/SearchPage'))
 const HistoryPage = lazy(() => import('./pages/about/HistoryPage'))
 const FaqPage = lazy(() => import('./pages/faq/FaqPage'))
@@ -214,6 +215,7 @@ export default function PortalApp() {
             <Route path="/change-password" element={<RequireAuth><ChangePasswordPage /></RequireAuth>} />
             <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
             <Route path="/teacher-materials" element={<RequireAuth roles={['teacher','admin']}><TeacherMaterialsPage /></RequireAuth>} />
+            <Route path="/admin" element={<RequireAuth roles={['admin']}><Suspense fallback={<PageLoader />}><AdminPage /></Suspense></RequireAuth>} />
             <Route
               path="*"
               element={
