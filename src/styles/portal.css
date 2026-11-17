@@ -1072,26 +1072,67 @@
   opacity: 0.85;
 }
 .class-switcher {
-  display: flex;
-  gap: 6px;
-  padding: 6px;
-  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 86px), 1fr));
+  gap: 8px;
+  padding: 10px;
+  margin-bottom: 0;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 0 0 16px 16px;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
+.schedule-class-selector {
+  margin-bottom: 24px;
+}
+.schedule-grade-picker {
+  display: flex;
+  gap: 7px;
+  padding: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  background: var(--surface-inset);
+  scrollbar-width: thin;
+}
+.schedule-grade-picker button {
+  flex: 0 0 44px;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--body);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.schedule-grade-picker button:hover,
+.schedule-grade-picker button:focus-visible {
+  border-color: var(--blue-300);
+  color: var(--accent-text);
+}
+.schedule-grade-picker button:focus-visible {
+  outline: 3px solid var(--blue-300);
+  outline-offset: 2px;
+}
+.schedule-grade-picker button.is-active {
+  background: linear-gradient(135deg, var(--blue-700), var(--blue-500));
+  color: #fff;
+  box-shadow: 0 5px 12px rgba(21, 115, 212, 0.22);
+}
 .class-tab {
-  flex: 1 1 0;
-  min-height: 46px;
-  padding: 0 14px;
-  border: 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
   border-radius: 11px;
   background: transparent;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -1110,6 +1151,17 @@
 }
 .class-tab:active {
   transform: translateY(1px);
+}
+.schedule-grade-empty {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 16px 16px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 .week-grid {
   display: grid;
@@ -1165,6 +1217,14 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+.schedule-homeroom-note {
+  padding: 9px 14px;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 .lesson-list {
   padding: 0;
@@ -1790,6 +1850,7 @@
   .class-switcher {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 0;
   }
   .schedule-intro {
     flex-direction: column;
@@ -1951,13 +2012,13 @@
 
 @media (max-width: 600px) {
   .class-switcher {
-    gap: 4px;
-    padding: 5px;
+    gap: 6px;
+    padding: 8px;
   }
   .class-tab {
-    min-height: 42px;
-    padding: 0 6px;
-    font-size: 14px;
+    min-height: 44px;
+    padding: 6px;
+    font-size: 13px;
   }
   .schedule-intro {
     padding: 18px;

@@ -5,7 +5,7 @@ import { downloadIcs } from '../utils/ics'
 
 // Действия вокруг расписания: скачать в календарь, распечатать, поделиться.
 // Всё работает без бэкенда — .ics генерируется на клиенте, share через Web Share API.
-export default function ScheduleActions({ classKey, lang, entries = null }) {
+export default function ScheduleActions({ classKey, lang, entries = null, allowCalendar = true }) {
   const { t } = useLanguage()
   const [done, setDone] = useState('')
 
@@ -36,9 +36,11 @@ export default function ScheduleActions({ classKey, lang, entries = null }) {
 
   return (
     <div className="schedule-actions">
-      <button type="button" className="action-chip" onClick={() => downloadIcs(classKey, lang, entries)}>
-        <Bell size={15} /> {t('schedule.ics')}
-      </button>
+      {allowCalendar && (
+        <button type="button" className="action-chip" onClick={() => downloadIcs(classKey, lang, entries)}>
+          <Bell size={15} /> {t('schedule.ics')}
+        </button>
+      )}
       <button type="button" className="action-chip" onClick={() => window.print()}>
         <Printer size={15} /> {t('schedule.print')}
       </button>

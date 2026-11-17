@@ -1,4 +1,5 @@
-import { lessonTimes, schedule10, scheduleClasses, subjectName, weekDays } from '../data/schedule.js'
+import { scheduleClasses, subjectName, weekDays } from '../data/schedule.js'
+import { entriesFor } from '../data/schedule.js'
 import { currentWeekStart } from './scheduleLive.js'
 
 // Экспорт недели в формат iCalendar (.ics): работает офлайн, без бэкенда.
@@ -37,24 +38,16 @@ export function buildIcs(classKey, lang, scheduleEntries = null) {
   const stamp = new Date()
 
   const events = []
-  const rows = Array.isArray(scheduleEntries)
-    ? scheduleEntries.map((entry) => ({
-        day: weekDays[entry.weekday - 1],
-        index: entry.lesson_number - 1,
-        item: entry,
-        time: {
-          start: String(entry.starts_at).slice(0, 5),
-          end: String(entry.ends_at).slice(0, 5),
-        },
-      }))
-    : weekDays.flatMap((day) =>
-        (schedule10[classKey]?.[day.id] || []).map((item, index) => ({
-          day,
-          index,
-          item,
-          time: lessonTimes[index],
-        })),
-      )
+  const rows = (Array.isArray(scheduleEntries) ? scheduleEntries : entriesFor(classKey))
+    .map((item) => ({
+      day: weekDays[item.weekday - 1],
+      index: item.lesson_number - 1,
+      item,
+      time: {
+        start: String(item.starts_at).slice(0, 5),
+        end: String(item.ends_at).slice(0, 5),
+      },
+    }))
 
   for (const { day, index, item, time } of rows) {
       if (!day || dayOffsets[day.id] === undefined || !time) continue

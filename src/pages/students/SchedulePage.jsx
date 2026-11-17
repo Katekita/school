@@ -14,13 +14,30 @@ import { getEntriesLiveStatus, toMinutes, weekdayId } from '../../utils/schedule
 import SchedulePlanner from '../../components/SchedulePlanner'
 import DataNotice from '../../components/DataNotice'
 
-const { lessonTimes, scheduleYear, subjectName, weekDays } = getSchedule()
+const scheduleCatalog = getSchedule()
+const {
+  entriesFor,
+  getBellSchedule,
+  getClassByName,
+  lessonTimes,
+  scheduleClasses,
+  scheduleYear,
+  subjectName,
+  weekDays,
+} = scheduleCatalog
 
 const weekdayNumber = Object.fromEntries(weekDays.map((day, index) => [day.id, index + 1]))
+const gradeOptions = Array.from({ length: 11 }, (_, index) => index + 1)
+const catalogClassRows = scheduleClasses.map((id) => ({ id, name: id }))
 const VIEW_MODE_KEY = 'school68_schedule_view'
 
 function formatTime(value) {
   return String(value || '').slice(0, 5)
+}
+
+function classGrade(value) {
+  const grade = Number(String(value || '').match(/^\s*(\d{1,2})/)?.[1])
+  return grade >= 1 && grade <= 11 ? grade : 0
 }
 
 function readViewMode() {
@@ -50,10 +67,13 @@ export default function SchedulePage() {
   const role = profile?.role
   const [params, setParams] = useSearchParams()
   const classParam = params.get('class')
+  const gradeParam = Number(params.get('grade'))
   const now = useNow(20_000)
   const [classes, setClasses] = useState([])
   const [selectedId, setSelectedId] = useState('')
+  const [selectedGrade, setSelectedGrade] = useState(1)
   const [entries, setEntries] = useState([])
+  const [usingCatalogSchedule, setUsingCatalogSchedule] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [viewMode, setViewMode] = useState(readViewMode)
@@ -61,7 +81,7 @@ export default function SchedulePage() {
   useEffect(() => {
     let active = true
     async function load() {
-      if (!supabase) {
+      if (!supabase && role === 'student') {
         setError('Подключение к расписанию пока недоступно. Обратитесь к администратору школы.')
         setLoading(false)
         return
@@ -70,23 +90,29 @@ export default function SchedulePage() {
       setLoading(true)
       setError('')
       setEntries([])
+      setUsingCatalogSchedule(false)
       try {
-        let query = supabase.from('classes').select('id,name').order('name')
-        if (role === 'student') query = query.eq('id', profileClassId)
-        const { data: classRows, error: classError } = await query
-        if (classError) throw classError
+        let list = catalogClassRows
+        if (supabase) {
+          let query = supabase.from('classes').select('id,name').order('name')
+          if (role === 'student') query = query.eq('id', profileClassId)
+          const { data: classRows, error: classError } = await query
+          if (classError) throw classError
+          list = classRows?.length ? classRows : role === 'student' ? [] : catalogClassRows
+        }
 
-        const list = classRows || []
         const fromUrl = classParam
+        const fromUrlGrade = gradeOptions.includes(gradeParam) ? gradeParam : 0
         const savedName = readSavedClass()
         const selected = role === 'student'
           ? list[0]?.id
           : list.find((item) => item.id === fromUrl || item.name === fromUrl)?.id
-            || list.find((item) => item.name === savedName)?.id
-            || list[0]?.id
+            || (fromUrlGrade
+              ? list.find((item) => classGrade(item.name) === fromUrlGrade)?.id
+              : list.find((item) => item.name === savedName)?.id || list[0]?.id)
 
         let lessons = []
-        if (selected) {
+        if (selected && supabase) {
           const { data, error: scheduleError } = await supabase
             .from('schedule_entries')
             .select('weekday,lesson_number,starts_at,ends_at,subject,room,academic_year')
@@ -98,11 +124,22 @@ export default function SchedulePage() {
           lessons = data || []
         }
 
+        const selectedClass = list.find((item) => item.id === selected)
+        let usingLocalCatalog = false
+        if (!lessons.length && selectedClass) {
+          const catalogClass = getClassByName(selectedClass.name) || scheduleCatalog.getClass(selected)
+          if (catalogClass) {
+            lessons = entriesFor(catalogClass.id)
+            usingLocalCatalog = true
+          }
+        }
+
         if (!active) return
         setClasses(list)
         setSelectedId(selected || '')
+        setSelectedGrade(fromUrlGrade || classGrade(selectedClass?.name) || 1)
         setEntries(lessons)
-        const selectedClass = list.find((item) => item.id === selected)
+        setUsingCatalogSchedule(usingLocalCatalog)
         if (selectedClass && role !== 'student') saveClass(selectedClass.name)
 
         if (selected && role !== 'student' && fromUrl !== selected) {
@@ -121,15 +158,40 @@ export default function SchedulePage() {
 
     if (role) load()
     return () => { active = false }
-  }, [profileId, profileClassId, role, classParam, setParams])
+  }, [profileId, profileClassId, role, classParam, gradeParam, setParams])
 
   const selectedClass = classes.find((item) => item.id === selectedId)
+  const selectedCatalogClass = getClassByName(selectedClass?.name) || scheduleCatalog.getClass(selectedId)
+  const requestedDay = weekDays.some((day) => day.id === params.get('day')) ? params.get('day') : ''
+  const todayId = weekdayId(now)
+  const bellsDayId = requestedDay || (weekdayNumber[todayId] ? todayId : 'mon')
+  const selectedBells = useMemo(() => {
+    if (usingCatalogSchedule && selectedCatalogClass) {
+      return getBellSchedule(selectedCatalogClass, bellsDayId)
+    }
+    const bells = new Map()
+    entries
+      .filter((entry) => entry.weekday === weekdayNumber[bellsDayId])
+      .forEach((entry) => {
+        if (!bells.has(entry.lesson_number)) {
+          bells.set(entry.lesson_number, {
+            start: formatTime(entry.starts_at),
+            end: formatTime(entry.ends_at),
+          })
+        }
+      })
+    return bells.size
+      ? [...bells.entries()].sort(([a], [b]) => a - b).map(([, bell]) => bell)
+      : selectedCatalogClass
+        ? getBellSchedule(selectedCatalogClass, bellsDayId)
+        : lessonTimes
+  }, [entries, selectedCatalogClass, usingCatalogSchedule, bellsDayId])
   const days = useMemo(() => weekDays.map((day) => ({
     ...day,
     lessons: entries.filter((item) => item.weekday === weekdayNumber[day.id]),
-  })), [entries])
-  const requestedDay = weekDays.some((day) => day.id === params.get('day')) ? params.get('day') : ''
-  const todayId = weekdayId(now)
+    classHour: usingCatalogSchedule ? selectedCatalogClass?.classHours?.[day.id] : null,
+  })), [entries, selectedCatalogClass, usingCatalogSchedule])
+  const todayClassHour = days.find((day) => day.id === todayId)?.classHour
   const live = useMemo(() => getEntriesLiveStatus(entries, now), [entries, now])
   const visibleDays = viewMode === 'today'
     ? days.filter((day) => day.id === todayId)
@@ -142,6 +204,8 @@ export default function SchedulePage() {
         ? t('live.weekend')
         : live.kind === 'done'
           ? t('live.done')
+          : live.kind === 'unknown'
+            ? t('live.timeUnknown')
           : t('live.empty')
   const liveLabel = live.kind === 'lesson'
     ? t('live.now')
@@ -149,6 +213,8 @@ export default function SchedulePage() {
       ? t('live.break')
       : live.kind === 'before'
       ? t('live.next')
+      : live.kind === 'unknown'
+        ? t('live.timeUnknown')
       : t('live.liveTitle')
 
   useEffect(() => {
@@ -158,10 +224,30 @@ export default function SchedulePage() {
 
   function selectClass(item) {
     setSelectedId(item.id)
+    setSelectedGrade(classGrade(item.name) || 1)
     saveClass(item.name)
     const next = new URLSearchParams(params)
     next.set('class', item.id)
+    next.delete('grade')
     next.delete('day')
+    setParams(next, { replace: true })
+  }
+
+  function selectGrade(grade) {
+    const firstClass = classes.find((item) => classGrade(item.name) === grade)
+    if (firstClass) {
+      selectClass(firstClass)
+      return
+    }
+
+    setSelectedGrade(grade)
+    setSelectedId('')
+    setEntries([])
+    setUsingCatalogSchedule(false)
+    const next = new URLSearchParams(params)
+    next.delete('class')
+    next.delete('day')
+    next.set('grade', String(grade))
     setParams(next, { replace: true })
   }
 
@@ -209,7 +295,17 @@ export default function SchedulePage() {
                 <span className="schedule-year"><CalendarDays size={14} />{year}</span>
                 <h2>{t('schedule.weekTitle')}</h2>
                 <p>{t('schedule.weekText')}</p>
-                {selectedClass && entries.length > 0 && <ScheduleActions classKey={selectedClass.name} lang={lang} entries={entries} />}
+                {usingCatalogSchedule && selectedCatalogClass && !selectedCatalogClass.timingKnown && (
+                  <p className="schedule-grade-empty" role="status">{t('schedule.approximateTimes')}</p>
+                )}
+                {selectedClass && entries.length > 0 && (
+                  <ScheduleActions
+                    classKey={selectedClass.name}
+                    lang={lang}
+                    entries={entries}
+                    allowCalendar={!usingCatalogSchedule || selectedCatalogClass?.timingKnown}
+                  />
+                )}
               </div>
               <div className="schedule-intro-badge" aria-hidden="true">
                 <GraduationCap size={22} />
@@ -221,18 +317,39 @@ export default function SchedulePage() {
 
           {profile?.role !== 'student' && classes.length > 1 && (
             <Reveal>
-              <div className="class-switcher" role="group" aria-label={t('schedule.classLabel')}>
-                {classes.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`class-tab${item.id === selectedId ? ' is-active' : ''}`}
-                    aria-pressed={item.id === selectedId}
-                    onClick={() => selectClass(item)}
-                  >
-                    {item.name}
-                  </button>
-                ))}
+              <div className="schedule-class-selector">
+                <div className="schedule-grade-picker" role="group" aria-label={t('schedule.gradeLabel')}>
+                  {gradeOptions.map((grade) => (
+                    <button
+                      key={grade}
+                      type="button"
+                      className={grade === selectedGrade ? 'is-active' : ''}
+                      aria-pressed={grade === selectedGrade}
+                      onClick={() => selectGrade(grade)}
+                    >
+                      {grade}
+                    </button>
+                  ))}
+                </div>
+                {classes.some((item) => classGrade(item.name) === selectedGrade) ? (
+                  <div className="class-switcher" role="group" aria-label={`${t('schedule.classLabel')} ${selectedGrade}`}>
+                    {classes.filter((item) => classGrade(item.name) === selectedGrade).map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`class-tab${item.id === selectedId ? ' is-active' : ''}`}
+                        aria-pressed={item.id === selectedId}
+                        onClick={() => selectClass(item)}
+                      >
+                        {item.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="schedule-grade-empty" role="status">
+                    {selectedGrade === 6 ? t('schedule.gradeSixUnavailable') : t('schedule.gradeUnavailable')}
+                  </p>
+                )}
               </div>
             </Reveal>
           )}
@@ -322,6 +439,13 @@ export default function SchedulePage() {
                 </section>
               </Reveal>
 
+              {viewMode === 'today' && todayClassHour && (
+                <p className="schedule-homeroom-note">
+                  {subjectName(todayClassHour.subject, lang)}
+                  {todayClassHour.room ? ` · ${todayClassHour.room}` : ''}
+                </p>
+              )}
+
               {viewMode === 'today' && live.lessons?.length > 0 && (
                 <Reveal>
                   <section className="day-timeline" aria-labelledby="day-timeline-title">
@@ -379,15 +503,26 @@ export default function SchedulePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {days.flatMap((day) => day.lessons.map((item) => (
-                        <tr key={`${day.id}-${item.lesson_number}`}>
-                          <td>{day[lang] || day.ky}</td>
-                          <td>{item.lesson_number}</td>
-                          <td>{formatTime(item.starts_at)}–{formatTime(item.ends_at)}</td>
-                          <td>{subjectName(item.subject, lang)}</td>
-                          <td>{item.room || '—'}</td>
-                        </tr>
-                      )))}
+                      {days.flatMap((day) => [
+                        ...(day.classHour ? [
+                          <tr key={`${day.id}-class-hour`}>
+                            <td>{day[lang] || day.ky}</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>{subjectName(day.classHour.subject, lang)}</td>
+                            <td>{day.classHour.room || '—'}</td>
+                          </tr>,
+                        ] : []),
+                        ...day.lessons.map((item) => (
+                          <tr key={`${day.id}-${item.lesson_number}`}>
+                            <td>{day[lang] || day.ky}</td>
+                            <td>{item.lesson_number}</td>
+                            <td>{formatTime(item.starts_at)}–{formatTime(item.ends_at)}</td>
+                            <td>{subjectName(item.subject, lang)}</td>
+                            <td>{item.room || '—'}</td>
+                          </tr>
+                        )),
+                      ])}
                     </tbody>
                   </table>
                 </div>
@@ -402,6 +537,12 @@ export default function SchedulePage() {
                           <h3>{day[lang] || day.ky}</h3>
                           {isToday && <span className="day-today">{t('schedule.today')}</span>}
                         </header>
+                        {day.classHour && (
+                          <p className="schedule-homeroom-note">
+                            {subjectName(day.classHour.subject, lang)}
+                            {day.classHour.room ? ` · ${day.classHour.room}` : ''}
+                          </p>
+                        )}
                         {day.lessons.length ? (
                           <ol className="lesson-list">
                             {day.lessons.map((item) => {
@@ -443,7 +584,7 @@ export default function SchedulePage() {
                     </div>
                   </div>
                   <div className="bells-list">
-                    {lessonTimes.map((time, index) => (
+                    {selectedBells.map((time, index) => (
                       <div className={`bell${live.kind === 'lesson' && live.lesson.lesson_number === index + 1 ? ' is-now' : ''}`} key={time.start}>
                         <span className="bell-num">{index + 1}</span>
                         <span className="bell-time">{time.start}–{time.end}</span>

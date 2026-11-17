@@ -7,7 +7,7 @@ import { getNextLesson, getLiveStatus, weekdayId } from '../utils/scheduleLive'
 import { readSavedClass } from '../utils/classStorage'
 import { getSchedule } from '../services'
 
-const { lessonTimes, subjectName } = getSchedule()
+const { subjectName } = getSchedule()
 
 // Живой виджет: что происходит в школе прямо сейчас и что будет следующим.
 // Состояние нигде не хранится — всё считается из часов браузера на тике useNow,
@@ -26,13 +26,14 @@ export default function LiveScheduleWidget({ variant = 'card' }) {
     done: t('live.done'),
     weekend: t('live.weekend'),
     empty: t('live.unpublished'),
+    unknown: t('live.timeUnknown'),
   }[live.kind]
 
   const detail = (() => {
     if (live.kind === 'lesson') {
       return {
         title: subjectName(live.lesson.subject, lang),
-        meta: `${live.index + 1} · ${lessonTimes[live.index].start}–${lessonTimes[live.index].end}`,
+        meta: `${live.lesson.lesson_number} · ${String(live.lesson.starts_at).slice(0, 5)}–${String(live.lesson.ends_at).slice(0, 5)}`,
         room: live.lesson.room,
         countdown: `${t('live.endsIn')} ${live.remaining} ${t('live.minutes')}`,
         progress: live.progress,
@@ -43,14 +44,14 @@ export default function LiveScheduleWidget({ variant = 'card' }) {
         title: live.nextLesson
           ? subjectName(live.nextLesson.subject, lang)
           : t('live.done'),
-        meta: live.nextLesson ? lessonTimes[live.nextIndex].start : '',
+        meta: live.nextLesson ? String(live.nextLesson.starts_at).slice(0, 5) : '',
         countdown: `${t('live.startsIn')} ${live.endsIn} ${t('live.minutes')}`,
       }
     }
     if (live.kind === 'before' && live.lesson) {
       return {
         title: subjectName(live.lesson.subject, lang),
-        meta: lessonTimes[live.lesson.lesson_number - 1]?.start || '',
+        meta: String(live.lesson.starts_at).slice(0, 5),
         countdown: `${t('live.startsIn')} ${live.remaining} ${t('live.minutes')}`,
       }
     }
