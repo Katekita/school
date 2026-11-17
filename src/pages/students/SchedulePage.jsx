@@ -93,7 +93,7 @@ export default function SchedulePage() {
       setUsingCatalogSchedule(false)
       try {
         let list = catalogClassRows
-        if (supabase) {
+        if (supabase && role) {
           let query = supabase.from('classes').select('id,name').order('name')
           if (role === 'student') query = query.eq('id', profileClassId)
           const { data: classRows, error: classError } = await query
@@ -112,7 +112,7 @@ export default function SchedulePage() {
               : list.find((item) => item.name === savedName)?.id || list[0]?.id)
 
         let lessons = []
-        if (selected && supabase) {
+        if (selected && supabase && role) {
           const { data, error: scheduleError } = await supabase
             .from('schedule_entries')
             .select('weekday,lesson_number,starts_at,ends_at,subject,room,academic_year')
@@ -156,7 +156,7 @@ export default function SchedulePage() {
       }
     }
 
-    if (role) load()
+    load()
     return () => { active = false }
   }, [profileId, profileClassId, role, classParam, gradeParam, setParams])
 
