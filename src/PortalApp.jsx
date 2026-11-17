@@ -230,7 +230,7 @@ export default function PortalApp() {
                     <Route path="/admission" element={<Navigate to="/kabyl-aluu" replace />} />
                     <Route path="/parents" element={<ParentsPage />} />
                     <Route path="/students" element={<RequireAuth roles={['student','teacher','admin']}><StudentsPage /></RequireAuth>} />
-                    <Route path="/students/schedule" element={<RequireAuth roles={['student','teacher','admin']}><SchedulePage /></RequireAuth>} />
+                    <Route path="/students/schedule" element={<SchedulePage />} />
                     <Route path="/dariek" element={<LocationPage />} />
                     <Route path="/baylanysh" element={<ContactPage />} />
                     <Route path="/news" element={<NewsPage />} />
