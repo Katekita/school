@@ -40,6 +40,10 @@ function classGrade(value) {
   return grade >= 1 && grade <= 11 ? grade : 0
 }
 
+function displayClassName(value) {
+  return String(value || '').replace(/\s+\(12\)$/, '(12)')
+}
+
 function readViewMode() {
   try {
     const saved = localStorage.getItem(VIEW_MODE_KEY)
@@ -89,8 +93,6 @@ export default function SchedulePage() {
 
       setLoading(true)
       setError('')
-      setEntries([])
-      setUsingCatalogSchedule(false)
       try {
         let list = catalogClassRows
         if (supabase && role) {
@@ -98,18 +100,21 @@ export default function SchedulePage() {
           if (role === 'student') query = query.eq('id', profileClassId)
           const { data: classRows, error: classError } = await query
           if (classError) throw classError
-          list = classRows?.length ? classRows : role === 'student' ? [] : catalogClassRows
+          list = classRows?.length ? classRows : catalogClassRows
         }
 
         const fromUrl = classParam
         const fromUrlGrade = gradeOptions.includes(gradeParam) ? gradeParam : 0
         const savedName = readSavedClass()
-        const selected = role === 'student'
-          ? list[0]?.id
-          : list.find((item) => item.id === fromUrl || item.name === fromUrl)?.id
-            || (fromUrlGrade
-              ? list.find((item) => classGrade(item.name) === fromUrlGrade)?.id
-              : list.find((item) => item.name === savedName)?.id || list[0]?.id)
+        const studentClass = role === 'student'
+          ? list.find((item) => item.id === profileClassId)
+          : null
+        const selected = studentClass?.id
+          || list.find((item) => item.id === fromUrl || item.name === fromUrl)?.id
+          || (fromUrlGrade
+            ? list.find((item) => classGrade(item.name) === fromUrlGrade)?.id
+            : list.find((item) => item.name === savedName)?.id
+              || list[0]?.id)
 
         let lessons = []
         if (selected && supabase && role) {
@@ -140,7 +145,7 @@ export default function SchedulePage() {
         setSelectedGrade(fromUrlGrade || classGrade(selectedClass?.name) || 1)
         setEntries(lessons)
         setUsingCatalogSchedule(usingLocalCatalog)
-        if (selectedClass && role !== 'student') saveClass(selectedClass.name)
+        if (selectedClass) saveClass(selectedClass.name)
 
         if (selected && role !== 'student' && fromUrl !== selected) {
           setParams((current) => {
@@ -225,6 +230,8 @@ export default function SchedulePage() {
   function selectClass(item) {
     setSelectedId(item.id)
     setSelectedGrade(classGrade(item.name) || 1)
+    setEntries([])
+    setUsingCatalogSchedule(false)
     saveClass(item.name)
     const next = new URLSearchParams(params)
     next.set('class', item.id)
@@ -309,13 +316,13 @@ export default function SchedulePage() {
               </div>
               <div className="schedule-intro-badge" aria-hidden="true">
                 <GraduationCap size={22} />
-                <strong>{selectedClass?.name || '—'}</strong>
+                <strong>{displayClassName(selectedClass?.name) || '—'}</strong>
                 <span>{t('schedule.classLabel')}</span>
               </div>
             </div>
           </Reveal>
 
-          {profile?.role !== 'student' && classes.length > 1 && (
+          {classes.length > 1 && (
             <Reveal>
               <div className="schedule-class-selector">
                 <div className="schedule-grade-picker" role="group" aria-label={t('schedule.gradeLabel')}>
@@ -341,7 +348,7 @@ export default function SchedulePage() {
                         aria-pressed={item.id === selectedId}
                         onClick={() => selectClass(item)}
                       >
-                        {item.name}
+                        {displayClassName(item.name)}
                       </button>
                     ))}
                   </div>
@@ -355,7 +362,7 @@ export default function SchedulePage() {
           )}
 
           {error && <p role="alert" className="auth-error">{error}</p>}
-          {loading ? (
+          {loading && !entries.length ? (
             <div className="page-loader" role="status" aria-live="polite">
               <span className="page-loader-spinner" />
             </div>
