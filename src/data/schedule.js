@@ -1,9 +1,11 @@
-// Bell times and subject labels are display metadata.
-// Lesson allocations stay in the protected Supabase table.
+import catalog from './scheduleCatalog.json' with { type: 'json' }
 
-export const scheduleYear = '2026–2027'
+// Источник расписания — скан-таблицы школы, разобранные скриптом
+// scripts/build-schedule-catalog.mjs в scheduleCatalog.json. Supabase сейчас
+// пуст, поэтому портал показывает именно этот каталог; когда школа внесёт
+// изменения в базу, её данные перекроют каталог на фронте.
 
-export const scheduleClasses = []
+export const scheduleYear = catalog.year
 
 export const weekDays = [
   { id: 'mon', ky: 'Дүйшөмбү', ru: 'Понедельник', en: 'Monday' },
@@ -13,16 +15,60 @@ export const weekDays = [
   { id: 'fri', ky: 'Жума', ru: 'Пятница', en: 'Friday' },
 ]
 
-// Урок — 45 минут, перемены по 5 минут, после третьего урока — 10 минут.
-// Первый урок начинается в 07:30, шестой заканчивается в 12:30.
-export const lessonTimes = [
-  { start: '07:30', end: '08:15' },
-  { start: '08:20', end: '09:05' },
-  { start: '09:10', end: '09:55' },
-  { start: '10:05', end: '10:50' },
-  { start: '10:55', end: '11:40' },
-  { start: '11:45', end: '12:30' },
-]
+const dayIds = weekDays.map((day) => day.id)
+
+export const subjectNames = catalog.subjectNames
+
+export function subjectName(key, lang) {
+  const entry = subjectNames[key]
+  if (!entry) return key
+  return entry[lang] || entry.ky
+}
+
+// Классы в порядке параллели → буква → программа обучения.
+export const scheduleClasses = catalog.classes.map((item) => item.id)
+
+const classIndex = new Map(catalog.classes.map((item) => [item.id, item]))
+
+function normalizeClassName(value) {
+  return String(value || '').toLocaleLowerCase().replace(/[\s‐‑–—-]/g, '')
+}
+
+export function getClass(id) {
+  return classIndex.get(id) || null
+}
+
+export function getClassByName(name) {
+  const normalized = normalizeClassName(name)
+  return catalog.classes.find((item) => normalizeClassName(item.id) === normalized) || null
+}
+
+export function getBellSchedule(classData, dayId) {
+  return classData?.bellsByDay?.[dayId] || classData?.bells || []
+}
+
+export function classLabel(item) {
+  if (!item) return ''
+  return item.program ? `${item.grade}-${item.letter} (${item.program})` : `${item.grade}-${item.letter}`
+}
+
+// Старый формат { classKey: { dayId: [{ subject, room }] } } оставлен как
+// совместимое представление: часть кода (ics, статистика) уже переведена на
+// каталог, но единый вид упрощает сверку с базой школы.
+export const schedule10 = Object.fromEntries(
+  catalog.classes.map((item) => [
+    item.id,
+    Object.fromEntries(
+      dayIds
+        .map((day) => [day, item.week[day] || []])
+        .filter(([, lessons]) => lessons.length > 0),
+    ),
+  ]),
+)
+
+// Совместимый сет первой смены для блоков, которым нужен один общий список.
+export const lessonTimes = catalog.classes.find((item) => item.id === '10А')?.bells
+  || catalog.classes[0].bells
 
 export const breaks = [
   { after: 1, minutes: 5 },
@@ -32,28 +78,41 @@ export const breaks = [
   { after: 5, minutes: 5 },
 ]
 
-const subjectNames = {
-  russian: { ky: 'Орус тили', ru: 'Русский язык', en: 'Russian language' },
-  kyrgyzLit: { ky: 'Кырг. адаб.', ru: 'Кыргызская литература', en: 'Kyrgyz literature' },
-  foreign: { ky: 'Чет тили', ru: 'Иностранный язык', en: 'Foreign language' },
-  algebra: { ky: 'Алгебра', ru: 'Алгебра', en: 'Algebra' },
-  geometry: { ky: 'Геометрия', ru: 'Геометрия', en: 'Geometry' },
-  history: { ky: 'Тарых', ru: 'История', en: 'History' },
-  pe: { ky: 'Дене тарбия', ru: 'Физкультура', en: 'Physical education' },
-  social: { ky: 'Ад. ж. коом', ru: 'Человек и общество', en: 'Man and society' },
-  physics: { ky: 'Физика', ru: 'Физика', en: 'Physics' },
-  chemistry: { ky: 'Химия', ru: 'Химия', en: 'Chemistry' },
-  biology: { ky: 'Биология', ru: 'Биология', en: 'Biology' },
-  geography: { ky: 'География', ru: 'География', en: 'Geography' },
-  russianLit: { ky: 'Орус адаб.', ru: 'Русская литература', en: 'Russian literature' },
-  kyrgyz: { ky: 'Кырг. тили', ru: 'Кыргызский язык', en: 'Kyrgyz language' },
-  achd: { ky: 'АЧД', ru: 'АЧД', en: 'ACHD' },
+// Параллели для группировки в интерфейсе: 1–4 (начальные), 5–9 (средние),
+// 10–11 (старшие).
+export const gradeGroups = [
+  { id: 'primary', from: 1, to: 4, ky: 'Башталгыч', ru: 'Начальные', en: 'Primary' },
+  { id: 'middle', from: 5, to: 9, ky: 'Орточу', ru: 'Средние', en: 'Middle' },
+  { id: 'senior', from: 10, to: 11, ky: 'Жогорку', ru: 'Старшие', en: 'Senior' },
+]
+
+export function groupOf(grade) {
+  return gradeGroups.find((group) => grade >= group.from && grade <= group.to) || gradeGroups[1]
 }
 
-export function subjectName(key, lang) {
-  const entry = subjectNames[key]
-  if (!entry) return key
-  return entry[lang] || entry.ky
+// Уроки класса в виде плоских записей, совместимых с формой строк
+// supabase.schedule_entries: weekday (1–7), lesson_number, starts_at, ends_at.
+export function entriesFor(classId) {
+  const item = classIndex.get(classId)
+  if (!item) return []
+  const rows = []
+  dayIds.forEach((day, dayIndex) => {
+    for (const lesson of item.week[day] || []) {
+      const bell = getBellSchedule(item, day)[lesson.number - 1]
+      if (!bell) continue
+      rows.push({
+        weekday: dayIndex + 1,
+        lesson_number: lesson.number,
+        starts_at: `${bell.start}:00`,
+        ends_at: `${bell.end}:00`,
+        subject: lesson.subject,
+        room: lesson.room || '',
+        academic_year: catalog.year,
+        timing_known: item.timingKnown,
+      })
+    }
+  })
+  return rows
 }
 
-export const schedule10 = {}
+export const scheduleSource = catalog.source

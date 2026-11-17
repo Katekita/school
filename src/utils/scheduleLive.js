@@ -1,7 +1,9 @@
-import { lessonTimes, schedule10, scheduleClasses, weekDays } from '../data/schedule.js'
+import { weekDays } from '../data/schedule.js'
+import { entriesFor, getBellSchedule, getClass } from '../data/schedule.js'
 
 // Живой статус расписания: какой урок/перемена идёт прямо сейчас.
 // Логика чисто локальная (без сервера): считаем от времени браузера.
+// Звонки берутся у класса и дня: по средам уроки короче, чем в остальные дни.
 
 const dayIds = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 const weekdayNumbers = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
@@ -56,6 +58,7 @@ export function isWeekend(now = new Date()) {
 export function getEntriesLiveStatus(entries, now = new Date()) {
   const { weekday, hour, minute } = bishkekTime(now)
   if (weekday === 0 || weekday === 6) return { kind: 'weekend' }
+  if (entries.some((entry) => entry.timing_known === false)) return { kind: 'unknown' }
 
   const lessons = entries
     .filter((entry) => entry.weekday === weekday)
@@ -132,30 +135,26 @@ export function getEntriesLiveStatus(entries, now = new Date()) {
  */
 export function getLiveStatus(classKey, now = new Date()) {
   const dayId = weekdayId(now)
-  const { weekday } = bishkekTime(now)
-  if (isWeekend(now)) return { kind: 'weekend' }
-
-  const lessons = schedule10[classKey]?.[dayId] || []
-  if (!lessons.length) return { kind: 'empty', dayId }
-  const entries = lessons.map((lesson, index) => ({
-    ...lesson,
-    weekday,
-    lesson_number: index + 1,
-    starts_at: lessonTimes[index]?.start,
-    ends_at: lessonTimes[index]?.end,
-  }))
-  return { ...getEntriesLiveStatus(entries, now), dayId }
+  if (isWeekend(now)) return { kind: 'weekend', dayId }
+  const status = getEntriesLiveStatus(entriesFor(classKey), now)
+  return { ...status, dayId }
 }
 
 // Ближайший урок сегодня (для виджета «следующий урок»).
 export function getNextLesson(classKey, now = new Date()) {
   const dayId = weekdayId(now)
-  const lessons = schedule10[classKey]?.[dayId] || []
+  const item = getClass(classKey)
+  if (!item || !item.timingKnown) return null
+  const lessons = item.week[dayId] || []
+  if (!lessons.length) return null
   const { hour, minute } = bishkekTime(now)
   const minutes = hour * 60 + minute
-  const index = lessons.findIndex((_, i) => minutes < toMinutes(lessonTimes[i].end))
+  const index = lessons.findIndex((lesson) => {
+    const bell = getBellSchedule(item, dayId)[lesson.number - 1]
+    return bell && minutes < toMinutes(bell.end)
+  })
   if (index === -1) return null
-  return { index, lesson: lessons[index], time: lessonTimes[index], dayId }
+  return { index, lesson: lessons[index], time: getBellSchedule(item, dayId)[lessons[index].number - 1], dayId }
 }
 
 export function dayTitle(dayId, lang) {
@@ -165,5 +164,5 @@ export function dayTitle(dayId, lang) {
 }
 
 export function isValidClass(value) {
-  return scheduleClasses.includes(value)
+  return Boolean(getClass(value))
 }
