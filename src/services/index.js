@@ -1,7 +1,11 @@
 import { documents, events, newsDataError, newsItems } from '../data/mockData'
 import textbookCatalog from '../data/textbooks.json'
 import schoolData from '../data/school'
-import * as scheduleData from '../data/schedule'
+
+// Каталог расписания (scheduleCatalog.json ~517 КБ) намеренно НЕ импортируется
+// здесь. Этот модуль подключает главная и другие eager-страницы, а тяжёлое
+// расписание нужно только ленивой странице /students/schedule — там оно и
+// импортируется напрямую, оставаясь в отдельном чанке.
 
 function slugify(value) {
   return String(value || '')
@@ -55,34 +59,6 @@ export function getDocuments() {
 export function getTextbooks() {
   const books = textbookCatalog?.books
   return normalizeRecords(books).filter((item) => item.published !== false && item.status !== 'draft')
-}
-
-export function getSchedule() {
-  const records = []
-  for (const classKey of scheduleData.scheduleClasses) {
-    const days = scheduleData.schedule10[classKey] || {}
-    for (const [day, lessons] of Object.entries(days)) {
-      for (const [index, lesson] of (Array.isArray(lessons) ? lessons : []).entries()) {
-        records.push({
-          id: `${classKey}-${day}-${index + 1}`,
-          slug: `${slugify(classKey)}-${day}-${index + 1}`,
-          title: scheduleData.subjectName(lesson.subject, 'ru'),
-          content: '',
-          category: classKey,
-          publishedAt: '',
-          status: 'published',
-          verified: false,
-          ...lesson,
-          day,
-          lessonNumber: index + 1,
-        })
-      }
-    }
-  }
-  return {
-    ...scheduleData,
-    records: normalizeRecords(records),
-  }
 }
 
 export function getSchoolInfo() {

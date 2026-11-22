@@ -8,13 +8,12 @@ import { useLanguage } from '../../i18n/LanguageContext'
 import { useAuth } from '../../auth/AuthContext'
 import { supabase } from '../../lib/supabase'
 import useNow from '../../hooks/useNow'
-import { getSchedule } from '../../services'
+import * as scheduleCatalog from '../../data/schedule'
 import { readSavedClass, saveClass } from '../../utils/classStorage'
 import { getEntriesLiveStatus, toMinutes, weekdayId } from '../../utils/scheduleLive'
 import SchedulePlanner from '../../components/SchedulePlanner'
 import DataNotice from '../../components/DataNotice'
 
-const scheduleCatalog = getSchedule()
 const {
   entriesFor,
   getBellSchedule,
@@ -27,7 +26,23 @@ const {
 } = scheduleCatalog
 
 const weekdayNumber = Object.fromEntries(weekDays.map((day, index) => [day.id, index + 1]))
-const gradeOptions = Array.from({ length: 11 }, (_, index) => index + 1)
+// 6-х классов в школе нет. 3-е и 7-е классы с 12-летним обучением —
+// отдельные вкладки: у них своё расписание и отдельная программа.
+// Классы 11-летней программы (например «3Б (11)») остаются в обычной параллели.
+const gradeOptions = [
+  { id: '1', grade: 1, program: null },
+  { id: '2', grade: 2, program: null },
+  { id: '3', grade: 3, program: null },
+  { id: '3-12', grade: 3, program: 12 },
+  { id: '4', grade: 4, program: null },
+  { id: '5', grade: 5, program: null },
+  { id: '7', grade: 7, program: null },
+  { id: '7-12', grade: 7, program: 12 },
+  { id: '8', grade: 8, program: null },
+  { id: '9', grade: 9, program: null },
+  { id: '10', grade: 10, program: null },
+  { id: '11', grade: 11, program: null },
+]
 const catalogClassRows = scheduleClasses.map((id) => ({ id, name: id }))
 const VIEW_MODE_KEY = 'school68_schedule_view'
 
@@ -38,6 +53,23 @@ function formatTime(value) {
 function classGrade(value) {
   const grade = Number(String(value || '').match(/^\s*(\d{1,2})/)?.[1])
   return grade >= 1 && grade <= 11 ? grade : 0
+}
+
+function classProgram(value) {
+  return Number(String(value || '').match(/\((1[12])\)\s*$/)?.[1]) || null
+}
+
+function belongsToGroup(name, group) {
+  if (!group || classGrade(name) !== group.grade) return false
+  return group.program ? classProgram(name) === group.program : classProgram(name) !== 12
+}
+
+function groupOfClassName(name) {
+  return gradeOptions.find((group) => belongsToGroup(name, group))?.id || ''
+}
+
+function groupLabel(group) {
+  return group.program ? `${group.grade} (${group.program})` : String(group.grade)
 }
 
 function displayClassName(value) {
@@ -71,11 +103,13 @@ export default function SchedulePage() {
   const role = profile?.role
   const [params, setParams] = useSearchParams()
   const classParam = params.get('class')
-  const gradeParam = Number(params.get('grade'))
+  // Старые ссылки вида ?grade=7 остаются валидными: id группы совпадает
+  // с номером параллели для обычных классов ('7'), 12-летние — '7-12'.
+  const groupParam = params.get('grade') || ''
   const now = useNow(20_000)
   const [classes, setClasses] = useState([])
   const [selectedId, setSelectedId] = useState('')
-  const [selectedGrade, setSelectedGrade] = useState(1)
+  const [selectedGroupId, setSelectedGroupId] = useState(gradeOptions[0].id)
   const [entries, setEntries] = useState([])
   const [usingCatalogSchedule, setUsingCatalogSchedule] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -104,15 +138,15 @@ export default function SchedulePage() {
         }
 
         const fromUrl = classParam
-        const fromUrlGrade = gradeOptions.includes(gradeParam) ? gradeParam : 0
+        const fromUrlGroup = gradeOptions.find((group) => group.id === groupParam) || null
         const savedName = readSavedClass()
         const studentClass = role === 'student'
           ? list.find((item) => item.id === profileClassId)
           : null
         const selected = studentClass?.id
           || list.find((item) => item.id === fromUrl || item.name === fromUrl)?.id
-          || (fromUrlGrade
-            ? list.find((item) => classGrade(item.name) === fromUrlGrade)?.id
+          || (fromUrlGroup
+            ? list.find((item) => belongsToGroup(item.name, fromUrlGroup))?.id
             : list.find((item) => item.name === savedName)?.id
               || list[0]?.id)
 
@@ -142,7 +176,11 @@ export default function SchedulePage() {
         if (!active) return
         setClasses(list)
         setSelectedId(selected || '')
-        setSelectedGrade(fromUrlGrade || classGrade(selectedClass?.name) || 1)
+        setSelectedGroupId(
+          fromUrlGroup?.id
+          || groupOfClassName(selectedClass?.name)
+          || gradeOptions[0].id,
+        )
         setEntries(lessons)
         setUsingCatalogSchedule(usingLocalCatalog)
         if (selectedClass) saveClass(selectedClass.name)
@@ -163,9 +201,10 @@ export default function SchedulePage() {
 
     load()
     return () => { active = false }
-  }, [profileId, profileClassId, role, classParam, gradeParam, setParams])
+  }, [profileId, profileClassId, role, classParam, groupParam, setParams])
 
   const selectedClass = classes.find((item) => item.id === selectedId)
+  const selectedGroup = gradeOptions.find((group) => group.id === selectedGroupId) || gradeOptions[0]
   const selectedCatalogClass = getClassByName(selectedClass?.name) || scheduleCatalog.getClass(selectedId)
   const requestedDay = weekDays.some((day) => day.id === params.get('day')) ? params.get('day') : ''
   const todayId = weekdayId(now)
@@ -224,12 +263,12 @@ export default function SchedulePage() {
 
   useEffect(() => {
     if (loading || !requestedDay) return
-    document.getElementById(`schedule-${requestedDay}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    document.getElementById(`schedule-${requestedDay}`)?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'start' })
   }, [loading, requestedDay, selectedId])
 
   function selectClass(item) {
     setSelectedId(item.id)
-    setSelectedGrade(classGrade(item.name) || 1)
+    setSelectedGroupId(groupOfClassName(item.name) || gradeOptions[0].id)
     setEntries([])
     setUsingCatalogSchedule(false)
     saveClass(item.name)
@@ -240,21 +279,21 @@ export default function SchedulePage() {
     setParams(next, { replace: true })
   }
 
-  function selectGrade(grade) {
-    const firstClass = classes.find((item) => classGrade(item.name) === grade)
+  function selectGroup(group) {
+    const firstClass = classes.find((item) => belongsToGroup(item.name, group))
     if (firstClass) {
       selectClass(firstClass)
       return
     }
 
-    setSelectedGrade(grade)
+    setSelectedGroupId(group.id)
     setSelectedId('')
     setEntries([])
     setUsingCatalogSchedule(false)
     const next = new URLSearchParams(params)
     next.delete('class')
     next.delete('day')
-    next.set('grade', String(grade))
+    next.set('grade', group.id)
     setParams(next, { replace: true })
   }
 
@@ -326,21 +365,21 @@ export default function SchedulePage() {
             <Reveal>
               <div className="schedule-class-selector">
                 <div className="schedule-grade-picker" role="group" aria-label={t('schedule.gradeLabel')}>
-                  {gradeOptions.map((grade) => (
+                  {gradeOptions.map((group) => (
                     <button
-                      key={grade}
+                      key={group.id}
                       type="button"
-                      className={grade === selectedGrade ? 'is-active' : ''}
-                      aria-pressed={grade === selectedGrade}
-                      onClick={() => selectGrade(grade)}
+                      className={group.id === selectedGroupId ? 'is-active' : ''}
+                      aria-pressed={group.id === selectedGroupId}
+                      onClick={() => selectGroup(group)}
                     >
-                      {grade}
+                      {groupLabel(group)}
                     </button>
                   ))}
                 </div>
-                {classes.some((item) => classGrade(item.name) === selectedGrade) ? (
-                  <div className="class-switcher" role="group" aria-label={`${t('schedule.classLabel')} ${selectedGrade}`}>
-                    {classes.filter((item) => classGrade(item.name) === selectedGrade).map((item) => (
+                {classes.some((item) => belongsToGroup(item.name, selectedGroup)) ? (
+                  <div className="class-switcher" role="group" aria-label={`${t('schedule.classLabel')} ${groupLabel(selectedGroup)}`}>
+                    {classes.filter((item) => belongsToGroup(item.name, selectedGroup)).map((item) => (
                       <button
                         key={item.id}
                         type="button"
@@ -354,7 +393,7 @@ export default function SchedulePage() {
                   </div>
                 ) : (
                   <p className="schedule-grade-empty" role="status">
-                    {selectedGrade === 6 ? t('schedule.gradeSixUnavailable') : t('schedule.gradeUnavailable')}
+                    {t('schedule.gradeUnavailable')}
                   </p>
                 )}
               </div>
@@ -534,7 +573,7 @@ export default function SchedulePage() {
                   </table>
                 </div>
               ) : visibleDays.length ? (
-                <div className="week-grid">
+                <div className={`week-grid${viewMode === 'week' ? ' is-week' : ''}`}>
                 {visibleDays.map((day, index) => {
                   const isToday = day.id === todayId
                   return (

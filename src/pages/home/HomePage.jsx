@@ -22,7 +22,7 @@ import DataNotice from '../../components/DataNotice'
 import NewsStrip from '../../components/NewsStrip'
 import EmptyState from '../../components/ui/EmptyState'
 import { scheduleStats } from '../../data/stats'
-import { downloadEventIcs } from '../../utils/ics'
+import { downloadEventIcs } from '../../utils/eventIcs'
 
 const schoolData = getSchoolInfo()
 

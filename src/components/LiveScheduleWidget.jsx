@@ -5,9 +5,7 @@ import { useLanguage } from '../i18n/LanguageContext'
 import useNow from '../hooks/useNow'
 import { getNextLesson, getLiveStatus, weekdayId } from '../utils/scheduleLive'
 import { readSavedClass } from '../utils/classStorage'
-import { getSchedule } from '../services'
-
-const { subjectName } = getSchedule()
+import { subjectName } from '../data/schedule'
 
 // Живой виджет: что происходит в школе прямо сейчас и что будет следующим.
 // Состояние нигде не хранится — всё считается из часов браузера на тике useNow,

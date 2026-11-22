@@ -383,6 +383,51 @@ const output = {
 
 fs.writeFileSync(OUTPUT, `${JSON.stringify(output, null, 2)}\n`)
 
+// Лёгкая сводка для секции «школа в цифрах» на главной: страница не должна
+// тянуть весь каталог ради нескольких чисел (см. src/data/stats.js).
+const summarySubjects = new Set()
+const summaryRooms = new Set()
+let summaryLessons = 0
+let firstBell = null
+let lastBell = null
+const bellToMinutes = (value) => {
+  const [hours, minutes] = String(value).split(':').map(Number)
+  return hours * 60 + minutes
+}
+for (const item of classes) {
+  for (const lessons of Object.values(item.week)) {
+    for (const lesson of lessons) {
+      summaryLessons += 1
+      summarySubjects.add(lesson.subject)
+      String(lesson.room || '')
+        .split('/')
+        .map((room) => room.trim())
+        .filter(Boolean)
+        .forEach((room) => summaryRooms.add(room))
+    }
+  }
+  for (const bells of Object.values(item.bellsByDay)) {
+    for (const bell of bells) {
+      if (!firstBell || bellToMinutes(bell.start) < bellToMinutes(firstBell)) firstBell = bell.start
+      if (!lastBell || bellToMinutes(bell.end) > bellToMinutes(lastBell)) lastBell = bell.end
+    }
+  }
+}
+
+const SUMMARY_OUTPUT = 'src/data/scheduleSummary.json'
+fs.writeFileSync(
+  SUMMARY_OUTPUT,
+  `${JSON.stringify({
+    classes: classes.length,
+    subjects: summarySubjects.size,
+    rooms: summaryRooms.size,
+    lessons: summaryLessons,
+    bellRange: firstBell && lastBell ? `${firstBell}\u2013${lastBell}` : '',
+    year: output.year,
+  }, null, 2)}\n`,
+)
+console.log(`Сводка записана: ${SUMMARY_OUTPUT}`)
+
 const byGrade = new Map()
 for (const item of classes) {
   byGrade.set(item.grade, (byGrade.get(item.grade) || 0) + 1)

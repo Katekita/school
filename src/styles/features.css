@@ -1801,3 +1801,38 @@
     box-shadow: var(--shadow-sm);
   }
 }
+
+/* ============================================================
+   Расписание на телефонах: неделя — горизонтальная свайп-карусель.
+   Дни листаются пальцем с фиксацией по карточке; полоса прокрутки
+   скрыта, переключатель дней сверху остаётся якорем.
+   ============================================================ */
+@media (max-width: 680px) {
+  .week-grid.is-week {
+    display: flex;
+    align-items: start;
+    gap: 12px;
+    padding-bottom: 10px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .week-grid.is-week::-webkit-scrollbar {
+    display: none;
+  }
+  .week-grid.is-week > .reveal {
+    flex: 0 0 min(85%, 420px);
+    height: auto;
+    scroll-snap-align: start;
+  }
+  .week-grid.is-week .day-card:hover {
+    transform: none;
+  }
+  .schedule-compact-table th,
+  .schedule-compact-table td {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+}
+
