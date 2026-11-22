@@ -45,6 +45,10 @@ const gradeOptions = [
 ]
 const catalogClassRows = scheduleClasses.map((id) => ({ id, name: id }))
 const VIEW_MODE_KEY = 'school68_schedule_view'
+// Идентификаторы классов в Supabase — uuid. Локальный каталог школы оперирует
+// короткими именами («1А», «7Б (12)»), и запрос с таким id в базу падает.
+// Поэтому в базу ходим только за настоящими uuid.
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function formatTime(value) {
   return String(value || '').slice(0, 5)
@@ -130,18 +134,23 @@ export default function SchedulePage() {
       try {
         let list = catalogClassRows
         if (supabase && role) {
-          let query = supabase.from('classes').select('id,name').order('name')
-          if (role === 'student') query = query.eq('id', profileClassId)
-          const { data: classRows, error: classError } = await query
-          if (classError) throw classError
-          list = classRows?.length ? classRows : catalogClassRows
+          // Ошибка запроса к базе не должна ломать страницу: школа пока
+          // заполняет расписание локальным каталогом, поэтому при сбое
+          // просто остаёмся на catalogClassRows.
+          try {
+            const { data: classRows, error: classError } = await supabase
+              .from('classes').select('id,name').order('name')
+            if (!classError && classRows?.length) list = classRows
+          } catch {
+            // Supabase недоступен — работаем по локальному каталогу.
+          }
         }
 
         const fromUrl = classParam
         const fromUrlGroup = gradeOptions.find((group) => group.id === groupParam) || null
         const savedName = readSavedClass()
         const studentClass = role === 'student'
-          ? list.find((item) => item.id === profileClassId)
+          ? list.find((item) => item.id === profileClassId || item.name === profileClassId)
           : null
         const selected = studentClass?.id
           || list.find((item) => item.id === fromUrl || item.name === fromUrl)?.id
@@ -151,16 +160,25 @@ export default function SchedulePage() {
               || list[0]?.id)
 
         let lessons = []
-        if (selected && supabase && role) {
-          const { data, error: scheduleError } = await supabase
-            .from('schedule_entries')
-            .select('weekday,lesson_number,starts_at,ends_at,subject,room,academic_year')
-            .eq('class_id', selected)
-            .eq('academic_year', scheduleYear)
-            .order('weekday')
-            .order('lesson_number')
-          if (scheduleError) throw scheduleError
-          lessons = data || []
+        // В supabase.schedule_entries class_id — uuid. Спрашиваем базу только
+        // для настоящих uuid (класс из таблицы школы); каталожные имена вроде
+        // «7Б» уходят в локальный каталог ниже.
+        const dbClassId = role === 'student' && uuidPattern.test(String(profileClassId || ''))
+          ? profileClassId
+          : (uuidPattern.test(String(selected || '')) ? selected : '')
+        if (dbClassId && supabase && role) {
+          try {
+            const { data, error: scheduleError } = await supabase
+              .from('schedule_entries')
+              .select('weekday,lesson_number,starts_at,ends_at,subject,room,academic_year')
+              .eq('class_id', dbClassId)
+              .eq('academic_year', scheduleYear)
+              .order('weekday')
+              .order('lesson_number')
+            if (!scheduleError) lessons = data || []
+          } catch {
+            // Ошибка сети или прав доступа — покажем локальный каталог.
+          }
         }
 
         const selectedClass = list.find((item) => item.id === selected)
